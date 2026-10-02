@@ -1,0 +1,112 @@
+{
+  "status": "success",
+  "station_id": "6105978",
+  "station_name": "Ottawa CDA RCS",
+  "api_base_url": "https://api.weather.gc.ca/collections/climate-daily/items",
+  "requested_start_date": "2002-01-01",
+  "requested_end_date": "2026-10-02",
+  "retrieved_records_before_deduplication": 9040,
+  "accepted_records_before_deduplication": 9040,
+  "unique_records": 9040,
+  "duplicate_records_removed": 0,
+  "records_rejected_by_station_date_validation": 0,
+  "pages_downloaded": 10,
+  "observed_first_date": "2002-01-01",
+  "observed_last_date": "2026-10-01",
+  "distinct_observed_dates": 9040,
+  "expected_calendar_dates": 9041,
+  "missing_calendar_dates_count": 1,
+  "missing_calendar_dates": [
+    "2026-10-02"
+  ],
+  "missing_measurement_counts": {
+    "MEAN_TEMPERATURE": 193,
+    "MIN_TEMPERATURE": 134,
+    "MAX_TEMPERATURE": 180,
+    "TOTAL_PRECIPITATION": 308,
+    "TOTAL_RAIN": 9040,
+    "TOTAL_SNOW": 9040,
+    "SNOW_ON_GROUND": 5294,
+    "SPEED_MAX_GUST": 2751,
+    "MIN_REL_HUMIDITY": 3398
+  },
+  "source_flag_counts": {
+    "COOLING_DEGREE_DAYS_FLAG": {
+      "M": 154,
+      "E": 60
+    },
+    "DIRECTION_MAX_GUST_FLAG": {
+      "E": 15,
+      "M": 162
+    },
+    "HEATING_DEGREE_DAYS_FLAG": {
+      "M": 154,
+      "E": 60
+    },
+    "MAX_TEMPERATURE_FLAG": {
+      "M": 141,
+      "E": 54
+    },
+    "MEAN_TEMPERATURE_FLAG": {
+      "M": 154,
+      "E": 60
+    },
+    "MIN_REL_HUMIDITY_FLAG": {
+      "M": 52
+    },
+    "MIN_TEMPERATURE_FLAG": {
+      "M": 95,
+      "E": 112
+    },
+    "SNOW_ON_GROUND_FLAG": {
+      "M": 119,
+      "E": 3,
+      "T": 47
+    },
+    "SPEED_MAX_GUST_FLAG": {
+      "E": 36,
+      "M": 131
+    },
+    "TOTAL_PRECIPITATION_FLAG": {
+      "M": 269,
+      "E": 12,
+      "C": 2,
+      "F": 1,
+      "A": 1
+    },
+    "TOTAL_RAIN_FLAG": {
+      "M": 4634
+    },
+    "TOTAL_SNOW_FLAG": {
+      "M": 4634
+    }
+  },
+  "missing_source_flag_counts": {
+    "COOLING_DEGREE_DAYS_FLAG": 8826,
+    "DIRECTION_MAX_GUST_FLAG": 8863,
+    "HEATING_DEGREE_DAYS_FLAG": 8826,
+    "MAX_TEMPERATURE_FLAG": 8845,
+    "MEAN_TEMPERATURE_FLAG": 8826,
+    "MIN_REL_HUMIDITY_FLAG": 8988,
+    "MIN_TEMPERATURE_FLAG": 8833,
+    "SNOW_ON_GROUND_FLAG": 8871,
+    "SPEED_MAX_GUST_FLAG": 8873,
+    "TOTAL_PRECIPITATION_FLAG": 8755,
+    "TOTAL_RAIN_FLAG": 4406,
+    "TOTAL_SNOW_FLAG": 4406
+  },
+  "raw_page_files": [
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00000.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00001.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00002.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00003.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00004.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00005.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00006.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00007.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00008.json",
+    "data\\raw\\climate_daily\\6105978\\20261002_121852\\page_00009.json"
+  ],
+  "processed_csv": "data\\processed\\climate_daily\\station_6105978_2002-01-01_2026-10-02.csv",
+  "generated_at": "2026-10-02T12:19:25"
+}

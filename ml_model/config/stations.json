@@ -1,0 +1,44 @@
+{
+  "api_base_url": "https://api.weather.gc.ca/collections/climate-daily/items",
+  "start_date": "2002-01-01",
+  "end_date": "2026-09-29",
+  "page_size": 1000,
+  "stations": [
+    {
+      "id": "1108446",
+      "name": "Vancouver Harbour CS"
+    },
+    {
+      "id": "3012209",
+      "name": "Edmonton Blatchford"
+    },
+    {
+      "id": "3031094",
+      "name": "Calgary Int'l CS"
+    },
+    {
+      "id": "502S001",
+      "name": "Winnipeg A CS"
+    },
+    {
+      "id": "6105978",
+      "name": "Ottawa CDA RCS"
+    },
+    {
+      "id": "6158355",
+      "name": "Toronto City"
+    },
+    {
+      "id": "7014160",
+      "name": "L'Assomption"
+    },
+    {
+      "id": "701S001",
+      "name": "Quebec/Jean Lesage Intl"
+    },
+    {
+      "id": "8202251",
+      "name": "Halifax Stanfield Int'l A"
+    }
+  ]
+}
