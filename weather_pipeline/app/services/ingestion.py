@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,8 @@ from app.clients.eccc import ECCCClient
 from app.repositories.weather import WeatherRepository
 from app.services.normalizer import normalize_observations
 
+
+logger = logging.getLogger(__name__)
 
 class WeatherIngestionService:
     """
@@ -37,21 +40,47 @@ class WeatherIngestionService:
         Returns the number of observations received from ECCC.
         """
 
-        eccc_observations = await self.eccc_client.fetch_daily(
-            climate_identifier=climate_identifier,
-            start_date=start_date,
-            end_date=end_date,
+        logger.info(
+            "Ingestion started: climate_id=%s start_date=%s end_date=%s",
+            climate_identifier,
+            start_date,
+            end_date,
         )
 
-        weather_observations = normalize_observations(
-            eccc_observations
-        )
+        try:
+            eccc_observations = await self.eccc_client.fetch_daily(
+                climate_identifier=climate_identifier,
+                start_date=start_date,
+                end_date=end_date,
+            )
 
-        await self.repository.upsert_observations(
-            weather_observations
-        )
+            weather_observations = normalize_observations(
+                eccc_observations
+            )
 
-        return len(weather_observations)
+            await self.repository.upsert_observations(
+                weather_observations
+            )
+
+            count = len(weather_observations)
+
+            logger.info(
+                "Ingestion completed: climate_id=%s observations=%d",
+                climate_identifier,
+                count,
+            )
+
+            return count
+
+        except Exception:
+            logger.exception(
+                "Ingestion failed: climate_id=%s "
+                "start_date=%s end_date=%s",
+                climate_identifier,
+                start_date,
+                end_date,
+            )
+            raise
 
 
 def create_ingestion_service(
