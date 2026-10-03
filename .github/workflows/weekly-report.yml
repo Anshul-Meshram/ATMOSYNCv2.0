@@ -25,7 +25,23 @@ jobs:
             "https://atmosyncv2-0.onrender.com/weather/report/weekly?start_date=${{ steps.dates.outputs.start_date }}&end_date=${{ steps.dates.outputs.end_date }}" \
             --output "weather_report_${{ steps.dates.outputs.start_date }}_${{ steps.dates.outputs.end_date }}.pdf"
 
-      - name: Upload PDF
+      - name: Upload PDF to Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          FILE="weather_report_${{ steps.dates.outputs.start_date }}_${{ steps.dates.outputs.end_date }}.pdf"
+
+          curl --fail --show-error --location \
+            -X POST \
+            "${SUPABASE_URL}/storage/v1/object/weather-reports/${FILE}" \
+            -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}" \
+            -H "apikey: ${SUPABASE_SECRET_KEY}" \
+            -H "Content-Type: application/pdf" \
+            -H "x-upsert: true" \
+            --data-binary "@${FILE}"
+
+      - name: Upload PDF as GitHub artifact
         uses: actions/upload-artifact@v4
         with:
           name: weekly-weather-report
