@@ -1,0 +1,33 @@
+name: Weekly Weather Report
+
+on:
+  schedule:
+    - cron: "0 20 * * 0"   # Every Monday at 01:30 IST
+  workflow_dispatch:
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Calculate previous week
+        id: dates
+        run: |
+          END_DATE=$(TZ=Asia/Kolkata date -d "yesterday" +%Y-%m-%d)
+          START_DATE=$(TZ=Asia/Kolkata date -d "7 days ago" +%Y-%m-%d)
+
+          echo "start_date=$START_DATE" >> "$GITHUB_OUTPUT"
+          echo "end_date=$END_DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Generate weekly PDF
+        run: |
+          curl --fail --show-error --location \
+            "https://atmosyncv2-0.onrender.com/weather/report/weekly?start_date=${{ steps.dates.outputs.start_date }}&end_date=${{ steps.dates.outputs.end_date }}" \
+            --output "weather_report_${{ steps.dates.outputs.start_date }}_${{ steps.dates.outputs.end_date }}.pdf"
+
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-weather-report
+          path: "*.pdf"
+          retention-days: 90
