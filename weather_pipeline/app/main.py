@@ -141,32 +141,33 @@ async def scheduled_ingestion() -> None:
 async def lifespan(app: FastAPI):
     logger.info("Starting Atmosync weather pipeline")
 
-    scheduler.add_job(
-        scheduled_ingestion,
-        trigger="cron",
-        hour=settings.daily_ingestion_hour,
-        minute=settings.daily_ingestion_minute,
-        id="daily_weather_ingestion",
-        replace_existing=True,
-    )
+    if settings.enable_scheduler:    
+        scheduler.add_job(
+            scheduled_ingestion,
+            trigger="cron",
+            hour=settings.daily_ingestion_hour,
+            minute=settings.daily_ingestion_minute,
+            id="daily_weather_ingestion",
+            replace_existing=True,
+        )
 
-    scheduler.start()
+        scheduler.start()
 
-    logger.info(
-        "Daily weather ingestion scheduled: %02d:%02d %s",
-        settings.daily_ingestion_hour,
-        settings.daily_ingestion_minute,
-        settings.scheduler_timezone,
-    )
+        logger.info(
+            "Daily weather ingestion scheduled: %02d:%02d %s",
+            settings.daily_ingestion_hour,
+            settings.daily_ingestion_minute,
+            settings.scheduler_timezone,
+        )   
+    else:
+        logger.info("In-process scheduler disabled")
 
     try:
         yield
     finally:
-        logger.info("Shutting down scheduler")
-
-        scheduler.shutdown(
-            wait=False,
-        )
+        if settings.enable_scheduler:
+            logger.info("Shutting down scheduler")
+            scheduler.shutdown(wait=False)
 
         await close_database()
 
