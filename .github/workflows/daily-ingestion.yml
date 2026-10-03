@@ -1,0 +1,38 @@
+name: Daily Weather Ingestion
+
+on: 
+  schedule:
+    # 02:00 IST = 20:30 UTC (previous day)
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: weather_pipeline
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install .
+
+      - name: Ingest previous day's weather
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ECCC_BASE_URL: https://api.weather.gc.ca/collections/climate-daily/items
+        run:
+          YESTERDAY=$(TZ=Asia/Kolkata date -d "yesterday" +%Y-%m-%d)
+
+          python -m app.main \
+            --start-date "$YESTERDAY" \
+            --end-date "$YESTERDAY"
