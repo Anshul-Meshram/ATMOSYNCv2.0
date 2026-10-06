@@ -33,6 +33,4 @@ jobs:
         run:
           YESTERDAY=$(TZ=Asia/Kolkata date -d "yesterday" +%Y-%m-%d)
 
-          python -m app.main \
-            --start-date "$YESTERDAY" \
-            --end-date "$YESTERDAY"
+          python -m app.main --start-date "$YESTERDAY" --end-date "$YESTERDAY"
