@@ -31,6 +31,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ECCC_BASE_URL: https://api.weather.gc.ca/collections/climate-daily/items
         run:
-          YESTERDAY=$(TZ=Asia/Kolkata date -d "yesterday" +%Y-%m-%d)
+          END_DATE=$(TZ=Asia/Kolkata date -d "yesterday" +%Y-%m-%d)
+          START_DATE=$(TZ=Asia/Kolkata date -d "5 days ago" +%Y-%m-%d)
 
-          python -m app.main --start-date "$YESTERDAY" --end-date "$YESTERDAY"
+          python -m app.main --start-date "$START_DATE" --end-date "$END_DATE"
