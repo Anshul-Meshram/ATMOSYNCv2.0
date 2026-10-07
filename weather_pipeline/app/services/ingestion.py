@@ -54,6 +54,16 @@ class WeatherIngestionService:
                 end_date=end_date,
             )
 
+            if not eccc_observations:
+                logger.warning(
+                    "No observations available from ECCC: "
+                    "climate_id=%s start_date=%s end_date=%s",
+                    climate_identifier,
+                    start_date,
+                    end_date,
+                )
+                return 0
+
             weather_observations = normalize_observations(
                 eccc_observations
             )
