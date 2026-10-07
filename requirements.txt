@@ -1,0 +1,18 @@
+numpy
+pandas
+scikit-learn
+requests
+python-dotenv
+
+#Rag dependencies 
+pymupdf                   #Read and extract text from PDF files
+sentence-transformers     #Generate embeddings for text data
+qdrant-client             #Connect the Qdrant vector database
+python-dotenv             #Read .env congiduration files
+numpy                     #Numerical operations
+pandas                    #Data Handling and manipulation
+tqdm                      #Progress bar while processing documents
+openai                    #LLM Generation
+
+
+
