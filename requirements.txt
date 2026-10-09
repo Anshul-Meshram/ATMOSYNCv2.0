@@ -14,5 +14,10 @@ pandas                    #Data Handling and manipulation
 tqdm                      #Progress bar while processing documents
 openai                    #LLM Generation
 
+#Gemini API key Dependencies
+google-genai
+
+
+
 
 

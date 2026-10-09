@@ -29,3 +29,7 @@ Thumbs.db
 # Build artifacts
 build/
 dist/
+
+# GEMINI API KEY 
+.env
+.env.*
