@@ -1,7 +1,18 @@
+import sys
 from pathlib import Path
+
+# Prevent local directory shadowing of third-party package 'qdrant_client'
+_this_dir = str(Path(__file__).resolve().parent)
+_popped = False
+if sys.path and sys.path[0] == _this_dir:
+    sys.path.pop(0)
+    _popped = True
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
+
+if _popped:
+    sys.path.insert(0, _this_dir)
 
 # QDRANT CONFIGURATION
 COLLECTION_NAME = "climate_documents"

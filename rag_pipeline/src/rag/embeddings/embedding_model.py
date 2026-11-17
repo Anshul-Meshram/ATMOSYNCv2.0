@@ -1,12 +1,17 @@
+import os
 from sentence_transformers import SentenceTransformer
 
-# UPDATED : Centralise embedding model
+# Centralized embedding model
 MODEL_NAME = "all-MiniLM-L6-v2"
 
-#UPDATED : Load the model once 
-model = SentenceTransformer(MODEL_NAME)
+# Prefer local cached files if available to operate reliably in offline/sandboxed environments
+try:
+    model = SentenceTransformer(MODEL_NAME, local_files_only=True)
+except Exception:
+    model = SentenceTransformer(MODEL_NAME)
 
-def generate_embedding(text:str) -> list[float]:
+
+def generate_embedding(text: str) -> list[float]:
     """
     Generate an embeddings vector for a single text chunk.
 
@@ -15,34 +20,24 @@ def generate_embedding(text:str) -> list[float]:
     Returns:
         Embeddings vector as the list of floats.
     """
-
-    if not text :
+    if not text:
         raise ValueError("Text cannot be empty.")
 
-    # UPDATED : Generate embeddings in batch
     embeddings = model.encode(text)
-
-    # UPDATED : convert numpy array to python list 
     return embeddings.tolist()
 
-def generate_embeddings(texts:list[str]) -> list[list[float]]:
+
+def generate_embeddings(texts: list[str]) -> list[list[float]]:
     """
     Generate the embeddings for the multiple text chunks.
-    
+
     Args:
         texts : List of text chunks.
     Returns:
         List of embedding vectors.
     """
-    if not texts :
+    if not texts:
         return []
 
-    # UDATED : Generate embeddings in batch.
     embeddings = model.encode(texts)
-
-    # UPDATED : Convert to normal python list
     return embeddings.tolist()
-
-
-
-
