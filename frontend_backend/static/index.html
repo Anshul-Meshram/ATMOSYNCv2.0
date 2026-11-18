@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AtmoSync v2.0 — AI Climate & Environmental Intelligence</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfeff',
+              500: '#06b6d4',
+              600: '#0891b2',
+              900: '#164e63',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i data-lucide="cloud-lightning" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
+            ATMOSYNC <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono">v2.0</span>
+          </h1>
+        </div>
+        <p class="text-xs text-slate-400">AI-Powered Climate & Environmental Intelligence System • Canada</p>
+      </div>
+    </div>
+
+    <!-- SYSTEM STATUS PILLS -->
+    <div class="hidden md:flex items-center gap-3 text-xs">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Qdrant Vector DB: <b>Active</b></span>
+      </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300">
+        <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+        <span>LLM: <b>Gemini 2.5 Flash</b></span>
+      </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/60 text-slate-300">
+        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+        <span>ML: <b>LightGBM 7-Day</b></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: WEATHER FORECAST & METRICS (7 Cols) -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- CITY SELECTOR & REGION CONTROLS -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              <i data-lucide="map-pin" class="w-4 h-4 text-cyan-400"></i>
+              Climate Station & Location
+            </h2>
+            <p class="text-xs text-slate-400">Select an Environment and Climate Change Canada (ECCC) monitored station</p>
+          </div>
+          <select id="stationSelect" class="bg-slate-800 border border-slate-700 text-sm text-slate-200 rounded-xl px-3.5 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition cursor-pointer">
+            <option value="toronto">Toronto, ON (Climate ID: 6158355)</option>
+            <option value="montreal">Montreal, QC (Climate ID: 7014160)</option>
+            <option value="vancouver">Vancouver, BC (Climate ID: 1108446)</option>
+            <option value="calgary">Calgary, AB (Climate ID: 3031094)</option>
+            <option value="edmonton">Edmonton, AB (Climate ID: 3012209)</option>
+            <option value="ottawa">Ottawa, ON (Climate ID: 6105978)</option>
+            <option value="winnipeg">Winnipeg, MB (Climate ID: 502S001)</option>
+            <option value="quebec city">Quebec City, QC (Climate ID: 701S001)</option>
+            <option value="halifax">Halifax, NS (Climate ID: 8202251)</option>
+          </select>
+        </div>
+
+        <!-- STAT CARDS -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+            <span class="text-xs text-slate-400 block">Forecast Mean</span>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span id="meanTempDisplay" class="text-2xl font-bold text-white">7.4</span>
+              <span class="text-xs text-slate-400">°C</span>
+            </div>
+            <span class="text-[10px] text-cyan-400 mt-1 block">LightGBM Forecaster</span>
+          </div>
+
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+            <span class="text-xs text-slate-400 block">Min / Max Range</span>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span id="rangeTempDisplay" class="text-xl font-bold text-white">3.2 / 11.6</span>
+              <span class="text-xs text-slate-400">°C</span>
+            </div>
+            <span class="text-[10px] text-slate-400 mt-1 block">7-day envelope</span>
+          </div>
+
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+            <span class="text-xs text-slate-400 block">Expected Precip.</span>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span id="precipDisplay" class="text-2xl font-bold text-cyan-400">5.9</span>
+              <span class="text-xs text-slate-400">mm</span>
+            </div>
+            <span class="text-[10px] text-slate-400 mt-1 block">7-day cumulative</span>
+          </div>
+
+          <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+            <span class="text-xs text-slate-400 block">Baseline Status</span>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span id="statusDisplay" class="text-sm font-semibold text-emerald-400">Near Normal</span>
+            </div>
+            <span class="text-[10px] text-emerald-500/80 mt-1 block">Historical Baseline</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7-DAY FORECAST CHART -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-semibold text-white flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-4 h-4 text-cyan-400"></i>
+              7-Day ML Weather Trend Forecast
+            </h3>
+            <p class="text-xs text-slate-400">Trained LightGBM model multi-target outputs</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+            Horizon: 7 Days
+          </span>
+        </div>
+
+        <div class="relative flex-1 min-h-[260px] w-full">
+          <canvas id="forecastChart"></canvas>
+        </div>
+      </div>
+
+      <!-- INDEXED CLIMATE LITERATURE REPOSITORY -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-xl bg-slate-800 text-cyan-400">
+            <i data-lucide="book-open" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h4 class="text-sm font-semibold text-white">Indexed Grounding Literature (Qdrant)</h4>
+            <p class="text-xs text-slate-400">26 chunks embedded from IPCC & Canadian Climate Intelligence reports</p>
+          </div>
+        </div>
+        <div class="text-xs font-mono text-slate-400 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+          Embedding: all-MiniLM-L6-v2 (384-dim)
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: GROUNDED AI CLIMATE ASSISTANT (5 Cols) -->
+    <section class="lg:col-span-5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col shadow-xl overflow-hidden h-[680px]">
+
+      <!-- CHAT HEADER -->
+      <div class="p-4 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="h-8 w-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-md shadow-cyan-500/20">
+            <i data-lucide="bot" class="w-4 h-4 text-white"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              AtmoSync AI Assistant
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">Grounded RAG</span>
+            </h3>
+            <p class="text-[11px] text-slate-400">Zero Hallucination • Cites Official Climate Reports</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT MESSAGES CONTAINER -->
+      <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <!-- Initial Welcome Message -->
+        <div class="flex gap-3">
+          <div class="h-7 w-7 rounded-lg bg-cyan-600/30 border border-cyan-500/40 flex-shrink-0 flex items-center justify-center text-cyan-400 text-xs">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          </div>
+          <div class="flex-1 bg-slate-800/80 border border-slate-700/60 rounded-2xl p-3.5 text-xs text-slate-200 leading-relaxed shadow-sm">
+            <p class="font-medium text-white mb-1">Hello! I am your AtmoSync Climate Intelligence Assistant.</p>
+            <p>I combine the <b>7-day LightGBM weather forecasts</b> with <b>authoritative Canadian climate literature</b> from our Qdrant vector store to answer your questions with citations.</p>
+            <p class="mt-2 text-slate-400">Click a quick question below or ask anything about current trends:</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK SUGGESTED PROMPTS -->
+      <div class="px-4 py-2 border-t border-slate-800/80 bg-slate-950/40 flex gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
+        <button onclick="sendQuickPrompt('Explain this 7-day forecast in the context of Canadian climate baselines.')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 whitespace-nowrap transition">
+          ☀️ Explain Forecast
+        </button>
+        <button onclick="sendQuickPrompt('Are these temperatures typical for this time of the year in Canada?')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 whitespace-nowrap transition">
+          🌡️ Seasonal Norms
+        </button>
+        <button onclick="sendQuickPrompt('Analyze the precipitation and rain risks for this region.')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 whitespace-nowrap transition">
+          🌧️ Rain Risks
+        </button>
+      </div>
+
+      <!-- CHAT INPUT BAR -->
+      <div class="p-3 border-t border-slate-800 bg-slate-900/90">
+        <form id="chatForm" class="flex gap-2" onsubmit="handleChatSubmit(event)">
+          <input
+            id="chatInput"
+            type="text"
+            placeholder="Ask a question about climate trends, anomalies..."
+            class="flex-1 bg-slate-950 border border-slate-700 text-xs text-white rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition placeholder:text-slate-500"
+          />
+          <button
+            type="submit"
+            id="sendBtn"
+            class="px-3.5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-lg shadow-cyan-600/20 transition disabled:opacity-50"
+          >
+            <span>Ask</span>
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          </button>
+        </form>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    lucide.createIcons();
+
+    let chartInstance = null;
+    let currentForecast = null;
+
+    // Load forecast for chosen station
+    async function loadStationData(stationName) {
+      try {
+        const response = await fetch(`/api/weather/forecast?station=${encodeURIComponent(stationName)}`);
+        const data = await response.json();
+        currentForecast = data;
+
+        // Update Stat Cards
+        const preds = data.predictions || [];
+        if (preds.length > 0) {
+          const first = preds[0];
+          document.getElementById('meanTempDisplay').innerText = first.predicted_mean_temp_c ?? '—';
+          document.getElementById('rangeTempDisplay').innerText = `${first.predicted_min_temp_c} / ${first.predicted_max_temp_c}`;
+          
+          const totalPrecip = preds.reduce((acc, p) => acc + (p.predicted_precip_mm || 0), 0);
+          document.getElementById('precipDisplay').innerText = totalPrecip.toFixed(1);
+        }
+
+        renderChart(preds);
+      } catch (err) {
+        console.error("Error loading forecast:", err);
+      }
+    }
+
+    // Render Chart.js
+    function renderChart(predictions) {
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      const labels = predictions.map(p => p.forecast_date.slice(5)); // MM-DD
+      const maxTemps = predictions.map(p => p.predicted_max_temp_c);
+      const minTemps = predictions.map(p => p.predicted_min_temp_c);
+      const precips = predictions.map(p => p.predicted_precip_mm);
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Max Temp (°C)',
+              data: maxTemps,
+              borderColor: '#f97316',
+              backgroundColor: 'rgba(249, 115, 22, 0.1)',
+              tension: 0.3,
+              borderWidth: 2.5,
+              pointBackgroundColor: '#f97316',
+            },
+            {
+              label: 'Min Temp (°C)',
+              data: minTemps,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              tension: 0.3,
+              borderWidth: 2.5,
+              pointBackgroundColor: '#38bdf8',
+            },
+            {
+              type: 'bar',
+              label: 'Precipitation (mm)',
+              data: precips,
+              backgroundColor: 'rgba(6, 182, 212, 0.5)',
+              borderColor: '#06b6d4',
+              borderWidth: 1,
+              yAxisID: 'yPrecip',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#cbd5e1', font: { size: 11 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8', font: { size: 11 } }
+            },
+            y: {
+              title: { display: true, text: 'Temperature (°C)', color: '#94a3b8' },
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8', font: { size: 11 } }
+            },
+            yPrecip: {
+              position: 'right',
+              title: { display: true, text: 'Precip (mm)', color: '#06b6d4' },
+              grid: { display: false },
+              ticks: { color: '#06b6d4', font: { size: 10 } },
+              min: 0,
+              max: 20
+            }
+          }
+        }
+      });
+    }
+
+    // Handle Chat Form Submit
+    async function handleChatSubmit(event) {
+      if (event) event.preventDefault();
+      const input = document.getElementById('chatInput');
+      const query = input.value.trim();
+      if (!query) return;
+
+      input.value = '';
+      await askAssistant(query);
+    }
+
+    function sendQuickPrompt(promptText) {
+      document.getElementById('chatInput').value = promptText;
+      handleChatSubmit();
+    }
+
+    // Send query to RAG API
+    async function askAssistant(query) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const station = document.getElementById('stationSelect').value;
+
+      // 1. Add User Message bubble
+      const userBubble = document.createElement('div');
+      userBubble.className = 'flex justify-end';
+      userBubble.innerHTML = `
+        <div class="max-w-[85%] bg-cyan-600 text-white rounded-2xl rounded-tr-sm p-3 text-xs leading-relaxed shadow-sm">
+          ${escapeHtml(query)}
+        </div>
+      `;
+      messagesContainer.appendChild(userBubble);
+
+      // 2. Add Loading bubble
+      const loadingBubble = document.createElement('div');
+      loadingBubble.className = 'flex gap-3';
+      loadingBubble.id = 'loadingBubble';
+      loadingBubble.innerHTML = `
+        <div class="h-7 w-7 rounded-lg bg-cyan-600/30 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-xs">
+          <i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i>
+        </div>
+        <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-3 text-xs text-slate-400 flex items-center gap-2">
+          <span>Searching Qdrant vector database & consulting Gemini...</span>
+        </div>
+      `;
+      messagesContainer.appendChild(loadingBubble);
+      lucide.createIcons();
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      try {
+        const response = await fetch('/api/rag/explain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: query,
+            station: station,
+            ml_forecast: currentForecast,
+            top_k: 4
+          })
+        });
+
+        const data = await response.json();
+        loadingBubble.remove();
+
+        // 3. Add AI Response bubble
+        const aiBubble = document.createElement('div');
+        aiBubble.className = 'flex gap-3';
+
+        let citationsHtml = '';
+        if (data.citations && data.citations.length > 0) {
+          const chips = data.citations.map(c => `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-[10px] text-cyan-300 font-mono">
+              📄 ${escapeHtml(c.source || 'Report')}${c.page ? ` (p.${c.page})` : ''}
+            </span>
+          `).join('');
+          citationsHtml = `
+            <div class="mt-2.5 pt-2 border-t border-slate-700/60">
+              <span class="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block mb-1">Citations & Sources:</span>
+              <div class="flex flex-wrap gap-1">${chips}</div>
+            </div>
+          `;
+        }
+
+        aiBubble.innerHTML = `
+          <div class="h-7 w-7 rounded-lg bg-cyan-600/30 border border-cyan-500/40 flex-shrink-0 flex items-center justify-center text-cyan-400 text-xs mt-0.5">
+            <i data-lucide="bot" class="w-3.5 h-3.5"></i>
+          </div>
+          <div class="flex-1 bg-slate-800/90 border border-slate-700/80 rounded-2xl rounded-tl-sm p-3.5 text-xs text-slate-200 leading-relaxed shadow-sm">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-medium text-white flex items-center gap-1.5">
+                AtmoSync Assistant
+                ${data.grounded ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">✓ Grounded</span>' : ''}
+              </span>
+              ${data.confidence ? `<span class="text-[10px] text-slate-400">Confidence: ${(data.confidence * 100).toFixed(0)}%</span>` : ''}
+            </div>
+            <div class="whitespace-pre-line">${escapeHtml(data.answer || 'No response generated.')}</div>
+            ${citationsHtml}
+          </div>
+        `;
+
+        messagesContainer.appendChild(aiBubble);
+      } catch (err) {
+        loadingBubble.remove();
+        const errBubble = document.createElement('div');
+        errBubble.className = 'text-xs text-rose-400 p-3 bg-rose-950/30 border border-rose-800 rounded-xl';
+        errBubble.innerText = 'Failed to generate explanation: ' + err.message;
+        messagesContainer.appendChild(errBubble);
+      }
+
+      lucide.createIcons();
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.innerText = text;
+      return div.innerHTML;
+    }
+
+    // Station selection change handler
+    document.getElementById('stationSelect').addEventListener('change', (e) => {
+      loadStationData(e.target.value);
+    });
+
+    // Initial load
+    loadStationData('toronto');
+  </script>
+</body>
+</html>

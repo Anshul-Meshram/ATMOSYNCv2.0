@@ -7,6 +7,7 @@ from datetime import date
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.clients.eccc import ECCCClient
 from app.config.locations import WEATHER_STATIONS
@@ -15,6 +16,7 @@ from app.db.session import AsyncSessionLocal, close_database
 from app.scheduler.jobs import run_daily_ingestion
 from app.services.ingestion import create_ingestion_service
 from app.api.weather import router as weather_router
+from app.api.rag import router as rag_router
 
 
 PROJECT_HISTORY_START = date(2020, 1, 1)
@@ -179,7 +181,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(weather_router)
+app.include_router(rag_router)
 
 
 @app.get("/health")
