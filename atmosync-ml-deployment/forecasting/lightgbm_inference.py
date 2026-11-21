@@ -136,7 +136,7 @@ class LightGBMForecaster:
             col = next((c for c in aliases if c in df.columns), None)
             df[feature] = pd.to_numeric(df[col], errors="coerce") if col else np.nan
         df.loc[df["precip_input_mm"] < 0, "precip_input_mm"] = np.nan
-        doy = df.index.dayofyear.to_numpy(float)
+        doy = df.index.day_of_year.to_numpy(float)
         df["doy_sin"] = np.sin(2 * np.pi * doy / 365.25)
         df["doy_cos"] = np.cos(2 * np.pi * doy / 365.25)
         yf = doy / np.where(df.index.is_leap_year, 366.0, 365.0)

@@ -61,7 +61,7 @@ def test_fetch_history_reindexes_missing_leading_trailing_and_internal_dates(mon
         assert hist.loc[pd.Timestamp(day), "Max Temp (°C)"] is np.nan or pd.isna(
             hist.loc[pd.Timestamp(day), "Max Temp (°C)"]
         )
-    assert captured["url"].endswith("/weather/quebec_city")
+    assert captured["url"].endswith("/weather/Quebec City")
     assert captured["params"]["start_date"] == start.isoformat()
     assert captured["params"]["end_date"] == end.isoformat()
 
