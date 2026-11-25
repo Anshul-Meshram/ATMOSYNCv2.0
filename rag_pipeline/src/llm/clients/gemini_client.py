@@ -1,6 +1,7 @@
 import os
 import time
 from google.genai import errors
+import httpx
 
 from google import genai
 from dotenv import load_dotenv
@@ -16,53 +17,57 @@ class GeminiClient(LLMProvider):
 
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
-        default_model = "gemini-2.5-flash"
+        default_model = "gemini-3.5-flash-lite"
         configured_model = (os.getenv("GEMINI_MODEL") or "").strip()
-        model = configured_model or default_model
+        self.primary_model = configured_model or default_model
 
         if not api_key:
             raise ValueError("GEMINI_API_KEY is not configured.")
 
-        normalized_model = model.lower()
-        if not normalized_model.startswith("gemini-2.") and not normalized_model.startswith("gemini-1."):
-            model = default_model
-
         self.client = genai.Client(api_key=api_key)
-        self.model = model
+        
+        candidates = [self.primary_model, "gemini-3.5-flash-lite", "gemini-3.8-flash"]
+        self.models = []
+        for m in candidates:
+            if m and m not in self.models:
+                self.models.append(m)
 
     def generate(self, prompt: str) -> str:
-        """Generate a response using Gemini with controlled retries."""
+        """Generate a response using Gemini with controlled retries and fallback models."""
+        last_error = None
 
-        max_attempts = 3
+        for model_name in self.models:
+            max_attempts = 2
+            for attempt in range(max_attempts):
+                try:
+                    response = self.client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                    )
 
-        for attempt in range(max_attempts):
-            try:
-                response = self.client.models.generate_content(
-                    model=self.model,
-                    contents=prompt,
-                )
+                    if not response.text:
+                        raise RuntimeError(f"Gemini model {model_name} returned an empty response.")
 
-                if not response.text:
-                    raise RuntimeError("Gemini returned an empty response.")
+                    return response.text
 
-                return response.text
+                except (errors.APIError, httpx.HTTPError) as exc:
+                    last_error = exc
+                    status_code = getattr(exc, "code", getattr(exc, "status_code", None))
 
-            except errors.APIError as exc:
-                status_code = getattr(exc, "code", None)
+                    # If 404 (model retired/not found) or 503 (high demand), switch to fallback model immediately
+                    if status_code in (404, 503):
+                        print(f"Model {model_name} unavailable ({status_code}). Trying fallback model...")
+                        break
 
-                # Retry only temporary server/rate-limit errors.
-                if status_code not in (429, 500, 502, 503, 504):
-                    raise
+                    if status_code in (429, 500, 502, 504) and attempt < max_attempts - 1:
+                        delay = 2 ** attempt
+                        print(f"Gemini {model_name} temporarily unavailable (HTTP {status_code}). Retrying in {delay}s...")
+                        time.sleep(delay)
+                        continue
+                    elif attempt < max_attempts - 1:
+                        time.sleep(1)
+                        continue
+                    else:
+                        break
 
-                if attempt == max_attempts - 1:
-                    raise
-
-                delay = 2 ** attempt
-                print(
-                    f"Gemini temporarily unavailable "
-                    f"(HTTP {status_code}). "
-                    f"Retrying in {delay} seconds..."
-                )
-                time.sleep(delay)
-
-        raise RuntimeError("Gemini generation failed after retries.")
+        raise RuntimeError(f"Gemini generation failed: {last_error}")

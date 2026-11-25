@@ -184,6 +184,8 @@ def explain_climate():
             } if result.event_summary else None,
         })
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(exc)}), 500
 
 

@@ -417,6 +417,10 @@
         const data = await response.json();
         loadingBubble.remove();
 
+        if (!response.ok || data.error) {
+          throw new Error(data.error || `Server responded with status ${response.status}`);
+        }
+
         // 3. Add AI Response bubble
         const aiBubble = document.createElement('div');
         aiBubble.className = 'flex gap-3';
