@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     scheduler_timezone: str = "Asia/Kolkata"
     daily_ingestion_hour: int = 2
     daily_ingestion_minute: int = 0
+    enable_scheduler: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

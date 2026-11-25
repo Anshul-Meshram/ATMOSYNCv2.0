@@ -1,0 +1,79 @@
+[1mdiff --git a/weather_pipeline/app/services/ingestion.py b/weather_pipeline/app/services/ingestion.py[m
+[1mindex a8e3a8e..2a2d2e8 100644[m
+[1m--- a/weather_pipeline/app/services/ingestion.py[m
+[1m+++ b/weather_pipeline/app/services/ingestion.py[m
+[36m@@ -1,3 +1,4 @@[m
+[32m+[m[32mimport logging[m
+ from datetime import date[m
+ [m
+ from sqlalchemy.ext.asyncio import AsyncSession[m
+[36m@@ -7,6 +8,8 @@[m [mfrom app.repositories.weather import WeatherRepository[m
+ from app.services.normalizer import normalize_observations[m
+ [m
+ [m
+[32m+[m[32mlogger = logging.getLogger(__name__)[m
+[32m+[m
+ class WeatherIngestionService:[m
+     """[m
+     Coordinates the weather ingestion pipeline.[m
+[36m@@ -37,21 +40,47 @@[m [mclass WeatherIngestionService:[m
+         Returns the number of observations received from ECCC.[m
+         """[m
+ [m
+[31m-        eccc_observations = await self.eccc_client.fetch_daily([m
+[31m-            climate_identifier=climate_identifier,[m
+[31m-            start_date=start_date,[m
+[31m-            end_date=end_date,[m
+[31m-        )[m
+[31m-[m
+[31m-        weather_observations = normalize_observations([m
+[31m-            eccc_observations[m
+[31m-        )[m
+[31m-[m
+[31m-        await self.repository.upsert_observations([m
+[31m-            weather_observations[m
+[32m+[m[32m        logger.info([m
+[32m+[m[32m            "Ingestion started: climate_id=%s start_date=%s end_date=%s",[m
+[32m+[m[32m            climate_identifier,[m
+[32m+[m[32m            start_date,[m
+[32m+[m[32m            end_date,[m
+         )[m
+ [m
+[31m-        return len(weather_observations)[m
+[32m+[m[32m        try:[m
+[32m+[m[32m            eccc_observations = await self.eccc_client.fetch_daily([m
+[32m+[m[32m                climate_identifier=climate_identifier,[m
+[32m+[m[32m                start_date=start_date,[m
+[32m+[m[32m                end_date=end_date,[m
+[32m+[m[32m            )[m
+[32m+[m
+[32m+[m[32m            weather_observations = normalize_observations([m
+[32m+[m[32m                eccc_observations[m
+[32m+[m[32m            )[m
+[32m+[m
+[32m+[m[32m            await self.repository.upsert_observations([m
+[32m+[m[32m                weather_observations[m
+[32m+[m[32m            )[m
+[32m+[m
+[32m+[m[32m            count = len(weather_observations)[m
+[32m+[m
+[32m+[m[32m            logger.info([m
+[32m+[m[32m                "Ingestion completed: climate_id=%s observations=%d",[m
+[32m+[m[32m                climate_identifier,[m
+[32m+[m[32m                count,[m
+[32m+[m[32m            )[m
+[32m+[m
+[32m+[m[32m            return count[m
+[32m+[m
+[32m+[m[32m        except Exception:[m
+[32m+[m[32m            logger.exception([m
+[32m+[m[32m                "Ingestion failed: climate_id=%s "[m
+[32m+[m[32m                "start_date=%s end_date=%s",[m
+[32m+[m[32m                climate_identifier,[m
+[32m+[m[32m                start_date,[m
+[32m+[m[32m                end_date,[m
+[32m+[m[32m            )[m
+[32m+[m[32m            raise[m
+ [m
+ [m
+ def create_ingestion_service([m

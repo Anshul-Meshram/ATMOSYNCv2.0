@@ -1,3 +1,4 @@
+from datetime import date
 from collections.abc import Sequence
 
 from sqlalchemy import text
