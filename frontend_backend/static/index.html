@@ -4,27 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AtmoSync v2.0 — AI Climate & Environmental Intelligence</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Local Offline-Ready Vendor Assets -->
+  <script src="/static/vendor/tailwind.min.js"></script>
+  <script src="/static/vendor/chart.min.js"></script>
+  <script src="/static/vendor/lucide.min.js"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#ecfeff',
-              500: '#06b6d4',
-              600: '#0891b2',
-              900: '#164e63',
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#ecfeff',
+                500: '#06b6d4',
+                600: '#0891b2',
+                900: '#164e63',
+              }
             }
           }
         }
-      }
+      };
     }
   </script>
   <style>
@@ -249,7 +249,12 @@
 
   <!-- JAVASCRIPT LOGIC -->
   <script>
-    lucide.createIcons();
+    function renderIcons() {
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        try { lucide.createIcons(); } catch (e) { console.warn(e); }
+      }
+    }
+    renderIcons();
 
     let chartInstance = null;
     let currentForecast = null;
@@ -265,11 +270,29 @@
         const preds = data.predictions || [];
         if (preds.length > 0) {
           const first = preds[0];
-          document.getElementById('meanTempDisplay').innerText = first.predicted_mean_temp_c ?? '—';
-          document.getElementById('rangeTempDisplay').innerText = `${first.predicted_min_temp_c} / ${first.predicted_max_temp_c}`;
+          const meanVal = Number(first.predicted_mean_temp_c ?? first.mean_temp_c);
+          document.getElementById('meanTempDisplay').innerText = !isNaN(meanVal) ? meanVal.toFixed(1) : '—';
           
-          const totalPrecip = preds.reduce((acc, p) => acc + (p.predicted_precip_mm || 0), 0);
+          const minVal = Number(first.predicted_min_temp_c ?? first.min_temp_c);
+          const maxVal = Number(first.predicted_max_temp_c ?? first.max_temp_c);
+          document.getElementById('rangeTempDisplay').innerText = (!isNaN(minVal) && !isNaN(maxVal)) 
+            ? `${minVal.toFixed(1)} / ${maxVal.toFixed(1)}` 
+            : '—';
+          
+          const totalPrecip = preds.reduce((acc, p) => acc + (p.predicted_precip_mm || p.precip_mm || 0), 0);
           document.getElementById('precipDisplay').innerText = totalPrecip.toFixed(1);
+        }
+
+        // Update Baseline / Anomaly status card
+        const statusEl = document.getElementById('statusDisplay');
+        if (data.anomalies && data.anomalies.length > 0) {
+          const topAnom = data.anomalies[0];
+          const label = (topAnom.label || 'Anomaly').replace(/_/g, ' ');
+          statusEl.innerText = label.toUpperCase();
+          statusEl.className = topAnom.status === 'extreme_alert' ? 'text-sm font-semibold text-rose-400' : 'text-sm font-semibold text-amber-400';
+        } else {
+          statusEl.innerText = 'Near Normal';
+          statusEl.className = 'text-sm font-semibold text-emerald-400';
         }
 
         renderChart(preds);
@@ -280,11 +303,19 @@
 
     // Render Chart.js
     function renderChart(predictions) {
-      const ctx = document.getElementById('forecastChart').getContext('2d');
-      const labels = predictions.map(p => p.forecast_date.slice(5)); // MM-DD
-      const maxTemps = predictions.map(p => p.predicted_max_temp_c);
-      const minTemps = predictions.map(p => p.predicted_min_temp_c);
-      const precips = predictions.map(p => p.predicted_precip_mm);
+      const canvas = document.getElementById('forecastChart');
+      if (!canvas) return;
+
+      if (typeof Chart === 'undefined') {
+        console.warn("Chart.js is offline or not yet initialized.");
+        return;
+      }
+
+      const ctx = canvas.getContext('2d');
+      const labels = predictions.map(p => (p.forecast_date || '').slice(5)); // MM-DD
+      const maxTemps = predictions.map(p => p.predicted_max_temp_c ?? p.max_temp_c ?? 0);
+      const minTemps = predictions.map(p => p.predicted_min_temp_c ?? p.min_temp_c ?? 0);
+      const precips = predictions.map(p => p.predicted_precip_mm ?? p.precip_mm ?? 0);
 
       if (chartInstance) {
         chartInstance.destroy();
@@ -399,7 +430,7 @@
         </div>
       `;
       messagesContainer.appendChild(loadingBubble);
-      lucide.createIcons();
+      renderIcons();
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
       try {
@@ -452,7 +483,7 @@
               </span>
               ${data.confidence ? `<span class="text-[10px] text-slate-400">Confidence: ${(data.confidence * 100).toFixed(0)}%</span>` : ''}
             </div>
-            <div class="whitespace-pre-line">${escapeHtml(data.answer || 'No response generated.')}</div>
+            <div class="leading-relaxed space-y-1.5 text-xs text-slate-200">${renderMarkdown(data.answer || 'No response generated.')}</div>
             ${citationsHtml}
           </div>
         `;
@@ -466,8 +497,27 @@
         messagesContainer.appendChild(errBubble);
       }
 
-      lucide.createIcons();
+      renderIcons();
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return '';
+      let html = escapeHtml(text);
+      // Headings
+      html = html.replace(/^### (.*$)/gim, '<h3 class="font-bold text-white text-xs mt-2.5 mb-1 pb-0.5 border-b border-slate-700/60">$1</h3>');
+      html = html.replace(/^## (.*$)/gim, '<h2 class="font-bold text-cyan-300 text-sm mt-3 mb-1.5">$1</h2>');
+      html = html.replace(/^# (.*$)/gim, '<h1 class="font-bold text-white text-sm mt-3 mb-1.5">$1</h1>');
+      // Bold
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>');
+      // Blockquotes / Notice boxes
+      html = html.replace(/^> (.*$)/gim, '<div class="border-l-2 border-cyan-500 bg-cyan-950/40 px-2.5 py-1.5 my-1.5 rounded-r text-[11px] text-cyan-200 leading-normal">$1</div>');
+      // Bullet lists
+      html = html.replace(/^\- (.*$)/gim, '<li class="ml-4 list-disc text-slate-300 my-0.5">$1</li>');
+      // Line breaks
+      html = html.replace(/\n\n/g, '<div class="h-2"></div>');
+      html = html.replace(/\n/g, '<br/>');
+      return html;
     }
 
     function escapeHtml(text) {

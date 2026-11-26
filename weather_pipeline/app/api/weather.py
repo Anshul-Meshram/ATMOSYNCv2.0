@@ -8,7 +8,11 @@ from app.config.locations import get_station_by_city, WEATHER_STATIONS
 from app.db.session import AsyncSessionLocal
 from app.models.weather import WeatherObservation, WeatherStationResponse
 from app.repositories.weather import WeatherRepository
-from app.services.report import generate_weekly_report
+from app.services.report import (
+    generate_weekly_report,
+    get_report_filename,
+    save_weekly_report,
+)
 
 
 router = APIRouter(
@@ -58,13 +62,20 @@ async def get_weekly_report(
         stations=WEATHER_STATIONS,
     )
 
+    pdf_path, _ = save_weekly_report(
+        pdf_bytes=pdf_bytes,
+        start_date=start_date,
+        end_date=end_date,
+        stations=WEATHER_STATIONS,
+    )
+
+    filename = pdf_path.name
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="weather_report_{start_date}.pdf"'
-            )
+            "Content-Disposition": f'attachment; filename="{filename}"'
         },
     )
 

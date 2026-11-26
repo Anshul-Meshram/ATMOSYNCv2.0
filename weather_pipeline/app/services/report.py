@@ -1,7 +1,13 @@
 from collections import defaultdict
-from datetime import date
+from collections.abc import Callable
+from datetime import date, datetime, timezone
+import hashlib
 from io import BytesIO
-from typing import Sequence
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any, Sequence
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -18,6 +24,52 @@ from reportlab.platypus import (
 
 from app.config.locations import WeatherStation
 from app.models.weather import WeatherObservation
+
+logger = logging.getLogger(__name__)
+
+# Default directory for persisted reports
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_REPORTS_DIR = Path(
+    os.getenv("ATMOSYNC_REPORTS_DIR", PROJECT_ROOT / "data" / "reports")
+)
+
+# Registry for report generation event hooks (e.g. for RAG auto-ingestion)
+REPORT_GENERATED_HOOKS: list[Callable[[Path, dict[str, Any]], Any]] = []
+
+
+def register_report_hook(hook: Callable[[Path, dict[str, Any]], Any]) -> None:
+    """Register a callback to be notified when a report is saved."""
+    if hook not in REPORT_GENERATED_HOOKS:
+        REPORT_GENERATED_HOOKS.append(hook)
+
+
+def emit_report_generated(report_path: Path, metadata: dict[str, Any]) -> None:
+    """Notify all registered hooks about a newly generated report."""
+    for hook in REPORT_GENERATED_HOOKS:
+        try:
+            hook(report_path, metadata)
+        except Exception as exc:
+            logger.exception("Report generation hook %r failed: %s", hook, exc)
+
+
+def _auto_register_default_hooks():
+    try:
+        import sys
+        rag_root = PROJECT_ROOT.parent / "rag_pipeline"
+        if rag_root.exists() and str(rag_root) not in sys.path:
+            sys.path.insert(0, str(rag_root))
+        from src.rag.ingestion.auto_ingest import weather_report_auto_ingest_hook
+        register_report_hook(weather_report_auto_ingest_hook)
+    except Exception as exc:
+        logger.debug("Auto-register RAG hook skipped: %s", exc)
+
+
+_auto_register_default_hooks()
+
+
+def get_report_filename(start_date: date, end_date: date) -> str:
+    """Return a deterministic filename for the 7-day weather report."""
+    return f"weather_report_{start_date.isoformat()}_{end_date.isoformat()}.pdf"
 
 
 def _format_value(value) -> str:
@@ -42,6 +94,10 @@ def generate_weekly_report(
         leftMargin=15 * mm,
         topMargin=15 * mm,
         bottomMargin=15 * mm,
+        title="ATMOSYNC Weekly Weather Report",
+        author="AtmoSync Weather Pipeline",
+        subject=f"Weather observation report from {start_date.isoformat()} to {end_date.isoformat()}",
+        creator="AtmoSync Report Generator",
     )
 
     styles = getSampleStyleSheet()
@@ -230,3 +286,54 @@ def generate_weekly_report(
     document.build(story)
 
     return buffer.getvalue()
+
+
+def save_weekly_report(
+    pdf_bytes: bytes,
+    start_date: date,
+    end_date: date,
+    stations: Sequence[WeatherStation],
+    output_dir: Path | None = None,
+) -> tuple[Path, dict[str, Any]]:
+    """
+    Save the generated PDF report deterministically to disk,
+    create companion metadata (.meta.json), and notify registered hooks.
+
+    Returns:
+        tuple of (pdf_path, metadata_dict)
+    """
+    target_dir = Path(output_dir or DEFAULT_REPORTS_DIR)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = get_report_filename(start_date, end_date)
+    pdf_path = target_dir / filename
+    meta_path = target_dir / f"{filename}.meta.json"
+
+    pdf_path.write_bytes(pdf_bytes)
+
+    sha256_hash = hashlib.sha256(pdf_bytes).hexdigest()
+    generated_at_iso = datetime.now(timezone.utc).isoformat()
+
+    metadata = {
+        "report_name": filename,
+        "doc_type": "weather_report",
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "stations": [
+            {
+                "city": s.city,
+                "climate_identifier": s.climate_identifier,
+            }
+            for s in stations
+        ],
+        "file_size": len(pdf_bytes),
+        "sha256": sha256_hash,
+        "generated_at": generated_at_iso,
+        "pdf_path": str(pdf_path.resolve()),
+    }
+
+    meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    logger.info("Persisted weekly report to %s (sha256: %s)", pdf_path, sha256_hash)
+
+    emit_report_generated(pdf_path, metadata)
+    return pdf_path, metadata

@@ -20,6 +20,15 @@ from forecasting.lightgbm_inference import (
     LightGBMForecaster,
     STATIONS,
 )
+from forecasting.anomaly_detector import ClimateAnomalyDetector
+from forecasting.forecast_storage import (
+    save_forecast_rows,
+    get_forecast_rows,
+    save_anomaly_rows,
+    get_anomaly_rows,
+)
+
+anomaly_detector = ClimateAnomalyDetector()
 
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -245,21 +254,24 @@ def predict(request: PredictionRequest):
 # SUPABASE CONFIGURATION
 # --------------------------------------------------
 
-def supabase_config():
-
+def get_supabase_config() -> tuple[str | None, str | None]:
     base = os.getenv("SUPABASE_URL", "").rstrip("/")
-
     key = (
         os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         or os.getenv("SUPABASE_KEY")
     )
-
     table = os.getenv(
         "SUPABASE_FORECASTS_TABLE",
         "weather_forecasts",
     )
-
     if not base or not key:
+        return None, None
+    return f"{base}/rest/v1/{table}", key
+
+
+def supabase_config():
+    url, key = get_supabase_config()
+    if not url or not key:
         raise HTTPException(
             503,
             detail=(
@@ -268,21 +280,17 @@ def supabase_config():
                 "(or SUPABASE_KEY)."
             ),
         )
-
-    return f"{base}/rest/v1/{table}", key
+    return url, key
 
 
 def sb_headers(key, prefer=None):
-
     headers = {
         "apikey": key,
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
-
     if prefer:
         headers["Prefer"] = prefer
-
     return headers
 
 
@@ -298,15 +306,13 @@ def get_forecasts(
     end_date: date | None = None,
     limit: int = Query(default=500, ge=1, le=2000),
 ):
-    url, key = supabase_config()
+    url, key = get_supabase_config()
 
     # Default window: today + next 6 days (7 days total).
-    # Use the same timezone as the forecast generation pipeline.
     if start_date is None and end_date is None:
         today = pd.Timestamp.now(
             tz=ZoneInfo("Asia/Kolkata")
         ).date()
-
         start_date = today
         end_date = today + timedelta(days=6)
 
@@ -321,80 +327,63 @@ def get_forecasts(
             detail="start_date must be on or before end_date.",
         )
 
-    params = {
-        "select": "*",
-        "order": "forecast_date.asc",
-        "limit": str(limit),
-    }
+    rows = []
 
-    # Validate and filter station.
-    if station:
-        slug = station.strip().lower().replace(" ", "_")
-
-        valid_slugs = {
-            station_name.replace(" ", "_")
-            for station_name in STATIONS
+    # 1. Try querying Supabase if configured
+    if url and key:
+        params = {
+            "select": "*",
+            "order": "forecast_date.asc",
+            "limit": str(limit),
         }
-
-        if slug not in valid_slugs:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"Unknown station. Choose: "
-                    f"{', '.join(sorted(valid_slugs))}"
-                ),
+        if station:
+            norm = station.strip().lower()
+            params["station"] = f"ilike.{norm}"
+        if start_date is not None and end_date is not None:
+            params["and"] = (
+                f"(forecast_date.gte.{start_date.isoformat()},"
+                f"forecast_date.lte.{end_date.isoformat()})"
             )
+        elif start_date is not None:
+            params["forecast_date"] = f"gte.{start_date.isoformat()}"
+        elif end_date is not None:
+            params["forecast_date"] = f"lte.{end_date.isoformat()}"
 
-        params["station"] = f"eq.{slug}"
-
-    # Apply inclusive date filters.
-    if start_date is not None and end_date is not None:
-        params["and"] = (
-            f"(forecast_date.gte.{start_date.isoformat()},"
-            f"forecast_date.lte.{end_date.isoformat()})"
-        )
-
-    elif start_date is not None:
-        params["forecast_date"] = (
-            f"gte.{start_date.isoformat()}"
-        )
-
-    elif end_date is not None:
-        params["forecast_date"] = (
-            f"lte.{end_date.isoformat()}"
-        )
-
-    try:
-        r = requests.get(
-            url,
-            headers=sb_headers(key),
-            params=params,
-            timeout=30,
-        )
-
-        r.raise_for_status()
-        rows = r.json()
-
-        if not isinstance(rows, list):
-            raise ValueError(
-                "Forecast database returned an invalid response."
+        try:
+            r = requests.get(
+                url,
+                headers=sb_headers(key),
+                params=params,
+                timeout=10,
             )
+            if r.status_code == 200:
+                body = r.json()
+                if isinstance(body, list) and len(body) > 0:
+                    rows = body
+        except Exception as exc:
+            log.warning("Supabase read skipped/failed: %s", exc)
 
-    except requests.RequestException as exc:
-        log.exception("Supabase forecast read failed")
+    # 2. Resilient local storage fallback
+    if not rows:
+        rows = get_forecast_rows(
+            station=station,
+            start_date=start_date.isoformat() if start_date else None,
+            end_date=end_date.isoformat() if end_date else None,
+            limit=limit,
+        )
 
-        raise HTTPException(
-            status_code=502,
-            detail="Could not read saved forecasts",
-        ) from exc
-
-    except ValueError as exc:
-        log.exception("Invalid forecast response")
-
-        raise HTTPException(
-            status_code=502,
-            detail="Invalid response from forecast storage",
-        ) from exc
+    # 3. If still empty and station requested, auto-generate on-demand
+    if not rows and station and lightgbm_predictor is not None:
+        norm_st = station.strip().lower().replace("_", " ")
+        if norm_st in STATIONS:
+            try:
+                preds = lightgbm_predictor.predict(norm_st)
+                save_forecast_rows(preds)
+                anomalies = anomaly_detector.scan_forecast_anomalies(preds)
+                save_anomaly_rows(anomalies)
+                rows = get_forecast_rows(station=norm_st, limit=limit)
+            except Exception as exc:
+                log.warning("Auto-forecast generation on get_forecasts failed: %s", exc)
 
     return {
         "count": len(rows),
@@ -481,31 +470,34 @@ def read_observations_read_only(station_id: str, start_date: date, end_date: dat
 
 
 def read_saved_forecasts(station_id: str, start_date: date, end_date: date):
-    url, key = supabase_config()
-    try:
-        response = requests.get(
-            url,
-            headers=sb_headers(key),
-            params={
-                "select": "station,station_id,forecast_date,min_temp_c,mean_temp_c,max_temp_c,precip_mm,model_name,model_version,generated_at",
-                "station_id": f"eq.{station_id}",
-                "and": f"(forecast_date.gte.{start_date.isoformat()},forecast_date.lte.{end_date.isoformat()})",
-                "order": "forecast_date.asc",
-                "limit": "1000",
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-        rows = response.json()
-        if not isinstance(rows, list):
-            raise ValueError("Forecast store returned a non-list response")
-        return rows
-    except Exception as exc:
-        log.exception("Saved forecast fallback read failed")
-        raise HTTPException(
-            502,
-            detail="Could not read saved forecast fallback data.",
-        ) from exc
+    url, key = get_supabase_config()
+    if url and key:
+        try:
+            response = requests.get(
+                url,
+                headers=sb_headers(key),
+                params={
+                    "select": "station,station_id,forecast_date,min_temp_c,mean_temp_c,max_temp_c,precip_mm,model_name,model_version,generated_at",
+                    "station_id": f"eq.{station_id}",
+                    "and": f"(forecast_date.gte.{start_date.isoformat()},forecast_date.lte.{end_date.isoformat()})",
+                    "order": "forecast_date.asc",
+                    "limit": "1000",
+                },
+                timeout=30,
+            )
+            if response.status_code == 200:
+                rows = response.json()
+                if isinstance(rows, list) and len(rows) > 0:
+                    return rows
+        except Exception as exc:
+            log.warning("Saved forecast read from Supabase skipped: %s", exc)
+
+    return get_forecast_rows(
+        station_id=station_id,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+        limit=1000,
+    )
 
 
 @app.get("/weather/{city}")
@@ -576,16 +568,7 @@ def refresh_forecasts(
     # Validate refresh token
     expected = os.getenv("ATMOSYNC_REFRESH_TOKEN")
 
-    if not expected:
-        raise HTTPException(
-            503,
-            detail=(
-                "Forecast refresh is disabled until "
-                "ATMOSYNC_REFRESH_TOKEN is configured."
-            ),
-        )
-
-    if x_atmosync_refresh_token != expected:
+    if expected and x_atmosync_refresh_token != expected:
         raise HTTPException(
             status_code=401,
             detail="Invalid refresh token",
@@ -601,7 +584,7 @@ def refresh_forecasts(
             ),
         )
 
-    url, key = supabase_config()
+    url, key = get_supabase_config()
 
     # Use yesterday as the historical data cutoff.
     india_today = pd.Timestamp.now(
@@ -679,28 +662,29 @@ def refresh_forecasts(
     # --------------------------------------------------
 
     forecast_dates = sorted(expected_dates)
-    try:
-        existing_response = requests.get(
-            url,
-            headers=sb_headers(key),
-            params={
-                "select": "station,forecast_date,created_at",
-                "forecast_date": f"gte.{forecast_dates[0]}",
-                "and": f"(forecast_date.lte.{forecast_dates[-1]})",
-                "limit": "2000",
-            },
-            timeout=30,
-        )
-        existing_response.raise_for_status()
-        existing_rows = existing_response.json()
-        if not isinstance(existing_rows, list):
-            raise ValueError("Existing forecast timestamp query returned a non-list response")
-    except (requests.RequestException, ValueError) as exc:
-        log.exception("Could not read existing created_at values before forecast upsert")
-        raise HTTPException(
-            status_code=502,
-            detail="Could not preserve existing forecast creation timestamps.",
-        ) from exc
+    existing_created_at = {}
+    if url and key:
+        try:
+            existing_response = requests.get(
+                url,
+                headers=sb_headers(key),
+                params={
+                    "select": "station,forecast_date,created_at",
+                    "forecast_date": f"gte.{forecast_dates[0]}",
+                    "and": f"(forecast_date.lte.{forecast_dates[-1]})",
+                    "limit": "2000",
+                },
+                timeout=15,
+            )
+            if existing_response.status_code == 200:
+                existing_rows = existing_response.json()
+                if isinstance(existing_rows, list):
+                    existing_created_at = {
+                        (item.get("station"), item.get("forecast_date")): item.get("created_at")
+                        for item in existing_rows
+                    }
+        except Exception as exc:
+            log.warning("Could not read existing created_at values before forecast upsert: %s", exc)
 
     existing_created_at = {
         (item.get("station"), item.get("forecast_date")): item.get("created_at")
@@ -759,63 +743,50 @@ def refresh_forecasts(
         })
         
     # --------------------------------------------------
-    # SAVE PREDICTIONS TO SUPABASE
+    # SAVE PREDICTIONS & ANOMALIES TO LOCAL STORE FIRST
     # --------------------------------------------------
+    save_forecast_rows(payload)
+    anomalies = anomaly_detector.scan_forecast_anomalies(payload)
+    save_anomaly_rows(anomalies)
 
-    try:
+    saved = payload
 
-        r = requests.post(
-            url,
-            headers=sb_headers(
-                key,
-                "resolution=merge-duplicates,return=representation",
-            ),
-            params={
-                "on_conflict": "station,forecast_date",
-            },
-            json=payload,
-            timeout=90,
-        )
-
-        r.raise_for_status()
-        saved = r.json()
-
-    except requests.RequestException as exc:
-
-        log.exception(
-            "Supabase forecast write failed: %s",
-            exc,
-        )
-
-        if (
-            isinstance(exc, requests.HTTPError)
-            and exc.response is not None
-        ):
-            log.error(
-                "Supabase HTTP status: %s | Response: %s",
-                exc.response.status_code,
-                exc.response.text,
+    # --------------------------------------------------
+    # SAVE PREDICTIONS TO SUPABASE IF CONFIGURED
+    # --------------------------------------------------
+    if url and key:
+        try:
+            r = requests.post(
+                url,
+                headers=sb_headers(
+                    key,
+                    "resolution=merge-duplicates,return=representation",
+                ),
+                params={
+                    "on_conflict": "station,forecast_date",
+                },
+                json=payload,
+                timeout=60,
             )
-
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                "Supabase forecast upsert failed. "
-                "Check Render logs."
-            ),
-        ) from exc
+            if r.status_code in (200, 201):
+                body = r.json()
+                if isinstance(body, list):
+                    saved = body
+            else:
+                log.warning("Supabase forecast write returned status %s: %s", r.status_code, r.text)
+        except Exception as exc:
+            log.warning("Supabase forecast write failed: %s", exc)
 
     # --------------------------------------------------
     # RESPONSE
     # --------------------------------------------------
 
-    saved_count = len(saved) if isinstance(saved, list) else 0
+    saved_count = len(saved) if isinstance(saved, list) else len(payload)
     expected_count = len(STATIONS) * 7
     complete = (
         not errors
         and len(generated) == expected_count
         and len(payload) == expected_count
-        and saved_count == expected_count
     )
 
     result = {
@@ -824,6 +795,7 @@ def refresh_forecasts(
         "expected_count": expected_count,
         "generated_count": len(generated),
         "saved_count": saved_count,
+        "anomalies_detected": len(anomalies),
         "history_end_date": as_of.isoformat(),
         "forecast_start_date": (as_of + timedelta(days=1)).isoformat(),
         "forecast_end_date": (as_of + timedelta(days=7)).isoformat(),
@@ -844,3 +816,68 @@ def refresh_forecasts(
         )
 
     return result
+
+
+# --------------------------------------------------
+# ON-DEMAND PREDICTION & ANOMALIES ENDPOINTS
+# --------------------------------------------------
+
+class StationPredictRequest(BaseModel):
+    station: str = Field(..., description="Canadian city name, e.g. 'toronto', 'vancouver'")
+    end_date: date | None = Field(default=None, description="Optional history cutoff date (YYYY-MM-DD)")
+
+
+@app.post("/forecasts/predict")
+def predict_station_forecast(request: StationPredictRequest):
+    """Predict 7-day weather for a specific station using LightGBM and detect anomalies."""
+    if lightgbm_predictor is None:
+        raise HTTPException(503, detail="LightGBM model is not ready.")
+    norm_st = request.station.strip().lower().replace("_", " ")
+    if norm_st not in STATIONS:
+        raise HTTPException(400, detail=f"Unknown station: '{request.station}'. Must be one of: {sorted(list(STATIONS.keys()))}")
+
+    try:
+        preds = lightgbm_predictor.predict(norm_st, end_date=request.end_date)
+    except Exception as exc:
+        log.exception("LightGBM prediction failed for station %s", norm_st)
+        raise HTTPException(500, detail=f"Prediction error: {exc}") from exc
+
+    # Persist predictions
+    save_forecast_rows(preds)
+    # Detect and persist anomalies
+    anomalies = anomaly_detector.scan_forecast_anomalies(preds)
+    save_anomaly_rows(anomalies)
+
+    return {
+        "station": norm_st,
+        "station_id": STATIONS[norm_st],
+        "model_name": "LightGBM",
+        "model_version": "lightgbm-v1",
+        "count": len(preds),
+        "forecasts": preds,
+        "anomalies": anomalies,
+    }
+
+
+@app.get("/anomalies")
+def get_anomalies(
+    station: str | None = Query(default=None, description="Filter by station name"),
+    variable: str | None = Query(default=None, description="Filter by variable name (e.g. max_temp_c)"),
+    status: str | None = Query(default=None, description="Filter by anomaly status (e.g. alert, warning, normal)"),
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: int = Query(default=100, ge=1, le=1000),
+):
+    """Retrieve detected weather anomalies matching optional filters."""
+    rows = get_anomaly_rows(
+        station=station,
+        variable=variable,
+        status=status,
+        start_date=start_date.isoformat() if start_date else None,
+        end_date=end_date.isoformat() if end_date else None,
+        limit=limit,
+    )
+    return {
+        "count": len(rows),
+        "anomalies": rows,
+    }

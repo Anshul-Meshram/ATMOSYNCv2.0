@@ -1,0 +1,48 @@
+{
+  "report_name": "weather_report_2026-11-01_2026-11-07.pdf",
+  "doc_type": "weather_report",
+  "start_date": "2026-11-01",
+  "end_date": "2026-11-07",
+  "stations": [
+    {
+      "city": "Toronto",
+      "climate_identifier": "6158355"
+    },
+    {
+      "city": "Montreal",
+      "climate_identifier": "7014160"
+    },
+    {
+      "city": "Vancouver",
+      "climate_identifier": "1108446"
+    },
+    {
+      "city": "Calgary",
+      "climate_identifier": "3031094"
+    },
+    {
+      "city": "Edmonton",
+      "climate_identifier": "3012209"
+    },
+    {
+      "city": "Ottawa",
+      "climate_identifier": "6105978"
+    },
+    {
+      "city": "Winnipeg",
+      "climate_identifier": "502S001"
+    },
+    {
+      "city": "Quebec City",
+      "climate_identifier": "701S001"
+    },
+    {
+      "city": "Halifax",
+      "climate_identifier": "8202251"
+    }
+  ],
+  "file_size": 10003,
+  "sha256": "9965661a019766626dae8a32459c58e8dee560de13c811a076fef74bb38f38cc",
+  "generated_at": "2026-11-26T10:31:14.577505+00:00",
+  "pdf_path": "M:\\sem7\\Major Project\\ATMOSYNCv2.0\\weather_pipeline\\data\\reports\\weather_report_2026-11-01_2026-11-07.pdf"
+}
