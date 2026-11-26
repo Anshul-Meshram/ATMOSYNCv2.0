@@ -33,6 +33,64 @@
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    html[data-theme="light"] body { background: #f1f5f9 !important; color: #0f172a; }
+    html[data-theme="light"] [class*="bg-slate-950"],
+    html[data-theme="light"] [class*="bg-slate-900"],
+    html[data-theme="light"] [class*="bg-slate-800"] {
+      background-color: #ffffff !important;
+    }
+    html[data-theme="light"] .text-white,
+    html[data-theme="light"] .text-slate-100,
+    html[data-theme="light"] .text-slate-200,
+    html[data-theme="light"] .text-slate-300 { color: #1e293b !important; }
+    html[data-theme="light"] .text-slate-400 { color: #475569 !important; }
+    html[data-theme="light"] .text-slate-500 { color: #64748b !important; }
+    html[data-theme="light"] [class*="border-slate-700"],
+    html[data-theme="light"] [class*="border-slate-800"] {
+      border-color: #cbd5e1 !important;
+    }
+    html[data-theme="light"] [class*="bg-indigo-950"] {
+      background-color: #eef2ff !important;
+      border-color: #c7d2fe !important;
+    }
+    html[data-theme="light"] [class*="text-indigo-200"] { color: #3730a3 !important; }
+    html[data-theme="light"] [class*="bg-cyan-950"] { background-color: #cffafe !important; }
+    html[data-theme="light"] [class*="text-cyan-300"] { color: #0e7490 !important; }
+    html[data-theme="light"] [class*="bg-amber-950"] { background-color: #fffbeb !important; }
+    html[data-theme="light"] [class*="text-amber-200"],
+    html[data-theme="light"] [class*="text-amber-300"] { color: #92400e !important; }
+    html[data-theme="light"] ::-webkit-scrollbar-track { background: #e2e8f0; }
+    html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #94a3b8; }
+    html[data-theme="light"] .bg-clip-text { -webkit-text-fill-color: #0e7490; }
+    .assistant-typing-dot {
+      width: 0.3rem;
+      height: 0.3rem;
+      border-radius: 9999px;
+      background: currentColor;
+      animation: assistant-dot 1.1s ease-in-out infinite;
+    }
+    .assistant-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .assistant-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+    .assistant-typing-cursor {
+      display: inline-block;
+      width: 0.35rem;
+      height: 0.85rem;
+      margin-left: 0.15rem;
+      background: #22d3ee;
+      vertical-align: middle;
+      animation: assistant-cursor-blink 0.9s steps(2, start) infinite;
+    }
+    @keyframes assistant-dot {
+      0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-3px); }
+    }
+    @keyframes assistant-cursor-blink {
+      to { visibility: hidden; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .assistant-typing-dot,
+      .assistant-typing-cursor { animation: none; }
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
@@ -68,6 +126,9 @@
         <span>ML: <b>LightGBM 7-Day</b></span>
       </div>
     </div>
+    <button id="themeToggle" type="button" class="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:text-cyan-400 transition" aria-label="Switch to light mode">
+      <span id="themeToggleLabel">Light mode</span>
+    </button>
   </header>
 
   <!-- MAIN DASHBOARD CONTENT -->
@@ -88,55 +149,179 @@
           </div>
           <select id="stationSelect" class="bg-slate-800 border border-slate-700 text-sm text-slate-200 rounded-xl px-3.5 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition cursor-pointer">
             <option value="toronto">Toronto, ON (Climate ID: 6158355)</option>
-            <option value="montreal">Montreal, QC (Climate ID: 7014160)</option>
-            <option value="vancouver">Vancouver, BC (Climate ID: 1108446)</option>
+            <option value="montreal">Montreal, QC (Climate ID: 7025251)</option>
+            <option value="vancouver">Vancouver, BC (Climate ID: 1108395)</option>
             <option value="calgary">Calgary, AB (Climate ID: 3031094)</option>
-            <option value="edmonton">Edmonton, AB (Climate ID: 3012209)</option>
-            <option value="ottawa">Ottawa, ON (Climate ID: 6105978)</option>
-            <option value="winnipeg">Winnipeg, MB (Climate ID: 502S001)</option>
+            <option value="edmonton">Edmonton, AB (Climate ID: 3012210)</option>
+            <option value="ottawa">Ottawa, ON (Climate ID: 6106000)</option>
+            <option value="winnipeg">Winnipeg, MB (Climate ID: 5023222)</option>
             <option value="quebec city">Quebec City, QC (Climate ID: 701S001)</option>
             <option value="halifax">Halifax, NS (Climate ID: 8202251)</option>
           </select>
         </div>
+      </div>
 
-        <!-- STAT CARDS -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Current Weather</h3>
+              <p class="text-xs text-slate-400">Open-Meteo current conditions for the selected city</p>
+            </div>
+            <span id="currentWeatherTimeDisplay" class="text-xs text-cyan-300" aria-live="polite">Loading current weather...</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 mt-3">
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌡️</span> Temperature Now</span>
+              <div class="mt-1"><span id="currentTempDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">°C</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">⬇️</span> Today's Low</span>
+              <div class="mt-1"><span id="todayMinTempDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">°C</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">☀️</span> Today's High</span>
+              <div class="mt-1"><span id="todayMaxTempDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">°C</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌧️</span> Current Precipitation</span>
+              <div class="mt-1"><span id="currentPrecipDisplay" class="text-xl font-bold text-cyan-400">—</span><span class="text-xs text-slate-400 ml-1">mm</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">💧</span> Humidity Now</span>
+              <div class="mt-1"><span id="currentHumidityDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">%</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">💨</span> Wind Now</span>
+              <div class="mt-1"><span id="currentWindDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">km/h</span></div>
+              <span id="currentWindDirectionDisplay" class="text-[10px] text-slate-400 block mt-1">Direction: —</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌡️</span> Feels Like</span>
+              <div class="mt-1"><span id="apparentTempDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">°C</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">💧</span> Dew Point</span>
+              <div class="mt-1"><span id="dewPointDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">°C</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌬️</span> Wind Gusts</span>
+              <div class="mt-1"><span id="windGustDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">km/h</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">☁️</span> Cloud Cover</span>
+              <div class="mt-1"><span id="cloudCoverDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">%</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">📈</span> Pressure (Sea Level)</span>
+              <div class="mt-1"><span id="pressureDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">hPa</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🗻</span> Surface Pressure</span>
+              <div class="mt-1"><span id="surfacePressureDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">hPa</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">👁️</span> Visibility</span>
+              <div class="mt-1"><span id="visibilityDisplay" class="text-xl font-bold text-white">—</span><span class="text-xs text-slate-400 ml-1">km</span></div>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌧️</span> Rain / Showers / Snow</span>
+              <div class="mt-1 text-sm font-bold text-white"><span id="precipTypesDisplay">—</span></div>
+              <span class="text-[10px] text-slate-400">mm / mm / cm</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌅</span> Today's Sunrise / Sunset</span>
+              <div class="mt-1 text-sm font-bold text-white"><span id="sunTimesDisplay">—</span></div>
+              <span class="text-[10px] text-slate-400">local time</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 sm:col-span-2 xl:col-span-1">
+              <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌤️</span> Condition</span>
+              <div id="weatherDescriptionDisplay" class="mt-1 text-sm font-bold text-white">—</div>
+              <span id="currentWeatherFreshness" class="text-[10px] text-slate-400 block mt-1">Source timestamp pending</span>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-2">Current conditions and today's low/high are model-based estimates, not direct ECCC station observations. Source: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" class="text-cyan-500 hover:text-cyan-400">Open-Meteo</a>.</p>
+          <p id="currentWeatherError" class="hidden text-xs text-amber-300 mt-3" role="status"></p>
+      </div>
+
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-sm font-semibold text-white mt-5 mb-2">7-Day LightGBM Forecast Summary</h3>
+        <p id="forecastFreshness" class="text-[10px] text-slate-400" aria-live="polite">Forecast timestamp pending</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
           <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400 block">Forecast Mean</span>
+            <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌡️</span> Day-1 Mean</span>
             <div class="flex items-baseline gap-1 mt-1">
-              <span id="meanTempDisplay" class="text-2xl font-bold text-white">7.4</span>
+              <span id="meanTempDisplay" class="text-2xl font-bold text-white">—</span>
               <span class="text-xs text-slate-400">°C</span>
             </div>
             <span class="text-[10px] text-cyan-400 mt-1 block">LightGBM Forecaster</span>
           </div>
 
           <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400 block">Min / Max Range</span>
+            <span class="text-xs text-slate-400 block"><span aria-hidden="true">↕️</span> Day-1 Min / Max</span>
             <div class="flex items-baseline gap-1 mt-1">
-              <span id="rangeTempDisplay" class="text-xl font-bold text-white">3.2 / 11.6</span>
+              <span id="rangeTempDisplay" class="text-xl font-bold text-white">—</span>
               <span class="text-xs text-slate-400">°C</span>
             </div>
             <span class="text-[10px] text-slate-400 mt-1 block">7-day envelope</span>
           </div>
 
           <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400 block">Expected Precip.</span>
+            <span class="text-xs text-slate-400 block"><span aria-hidden="true">🌧️</span> Expected Precip.</span>
             <div class="flex items-baseline gap-1 mt-1">
-              <span id="precipDisplay" class="text-2xl font-bold text-cyan-400">5.9</span>
+              <span id="precipDisplay" class="text-2xl font-bold text-cyan-400">—</span>
               <span class="text-xs text-slate-400">mm</span>
             </div>
             <span class="text-[10px] text-slate-400 mt-1 block">7-day cumulative</span>
           </div>
 
           <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400 block">Baseline Status</span>
+            <span class="text-xs text-slate-400 block"><span aria-hidden="true">⚠️</span> Forecast Anomaly Flags</span>
             <div class="flex items-baseline gap-1 mt-1">
-              <span id="statusDisplay" class="text-sm font-semibold text-emerald-400">Near Normal</span>
+              <span id="statusDisplay" class="text-sm font-semibold text-slate-400">—</span>
             </div>
-            <span class="text-[10px] text-emerald-500/80 mt-1 block">Historical Baseline</span>
+            <span class="text-[10px] text-slate-400 mt-1 block">Forecast anomaly scan</span>
           </div>
         </div>
       </div>
+
+      <!-- TIMEZONE-AWARE WEATHER DATE SELECTOR -->
+      <section id="weatherCalendar" class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl" aria-labelledby="calendarTitle">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h3 id="calendarTitle" class="text-base font-semibold text-white flex items-center gap-2">
+              Weather by Date
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Choose a past date, today, or one of the next 7 days.</p>
+            <p id="calendarTimezone" class="text-[11px] text-cyan-300 mt-1" aria-live="polite">Loading location timezone…</p>
+            <p id="calendarDateLimit" class="text-[10px] text-slate-500 mt-1">Forecast availability: loading…</p>
+          </div>
+          <div class="relative flex-shrink-0">
+            <input id="calendarDateInput" type="date" class="sr-only" tabindex="-1" aria-label="Select weather date">
+            <button id="calendarDatePickerButton" type="button" aria-label="Choose weather date" title="Choose weather date" class="h-10 w-10 inline-flex items-center justify-center rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:text-cyan-400 hover:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition">
+              <i data-lucide="calendar-days" class="w-5 h-5" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 border-t border-slate-800 pt-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 id="selectedDateLabel" class="text-sm font-semibold text-white">Select a date</h4>
+                <span id="selectedDateMode" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">—</span>
+              </div>
+              <p id="selectedDateSource" class="text-[11px] text-slate-400 mt-1">Historical ECCC actuals, current Open-Meteo data, or separate forecast sources will appear here.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="explainSelectedDateButton" type="button" disabled class="px-3 py-1.5 rounded-lg bg-cyan-700 text-white text-xs hover:bg-cyan-600 disabled:opacity-40 disabled:cursor-not-allowed">Explain with AI</button>
+              <button id="exportSelectedDateButton" type="button" disabled class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 hover:text-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed">Export CSV</button>
+              <button id="retrySelectedDateButton" type="button" class="hidden px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 hover:text-cyan-400">Retry</button>
+            </div>
+          </div>
+          <p id="selectedDateStatus" class="text-xs text-slate-400 mt-3" role="status" aria-live="polite">Weather data will load when a date is selected.</p>
+          <div id="selectedDateDetails" class="mt-3 space-y-3"></div>
+        </div>
+      </section>
 
       <!-- 7-DAY FORECAST CHART -->
       <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col">
@@ -258,46 +443,229 @@
 
     let chartInstance = null;
     let currentForecast = null;
+    let currentWeatherRequestId = 0;
+    let stationRequestId = 0;
+    let calendarRequestId = 0;
+    let calendarTimezone = null;
+    let calendarStation = null;
+    let selectedDate = null;
+    let selectedDatePayload = null;
+    let calendarDateCache = new Map();
+    const CITY_TIMEZONES = {
+      toronto: 'America/Toronto',
+      montreal: 'America/Toronto',
+      vancouver: 'America/Vancouver',
+      calgary: 'America/Edmonton',
+      edmonton: 'America/Edmonton',
+      ottawa: 'America/Toronto',
+      winnipeg: 'America/Winnipeg',
+      'quebec city': 'America/Toronto',
+      halifax: 'America/Halifax',
+    };
+
+    function numericValue(value) {
+      if (value === null || value === undefined || value === '') return null;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function formatObservationValue(value) {
+      const number = numericValue(value);
+      return number === null ? '—' : number.toFixed(1);
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function flaggedAnomalies(rows) {
+      return (rows || []).filter((anomaly) => {
+        const status = String(anomaly.status || '').toLowerCase();
+        const label = String(anomaly.label || '').toLowerCase();
+        return !['normal', 'within_normal_range'].includes(status)
+          && !['normal', 'within_normal_range'].includes(label);
+      });
+    }
+
+    function formatTimestamp(value, timeZone) {
+      if (!value) return 'Unavailable';
+      const timestamp = new Date(value);
+      if (Number.isNaN(timestamp.getTime())) return 'Unavailable';
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone,
+      }).format(timestamp);
+    }
+
+    async function loadCurrentWeather(stationName) {
+      const requestId = ++currentWeatherRequestId;
+      const timeDisplay = document.getElementById('currentWeatherTimeDisplay');
+      const errorDisplay = document.getElementById('currentWeatherError');
+      const metricIds = [
+        'currentTempDisplay',
+        'todayMinTempDisplay',
+        'todayMaxTempDisplay',
+        'currentPrecipDisplay',
+        'currentHumidityDisplay',
+        'currentWindDisplay',
+        'apparentTempDisplay',
+        'dewPointDisplay',
+        'windGustDisplay',
+        'cloudCoverDisplay',
+        'pressureDisplay',
+        'surfacePressureDisplay',
+        'visibilityDisplay',
+      ];
+
+      metricIds.forEach((id) => {
+        setText(id, '—');
+      });
+      setText('currentWindDirectionDisplay', 'Direction: —');
+      setText('precipTypesDisplay', '—');
+      setText('sunTimesDisplay', '—');
+      setText('weatherDescriptionDisplay', '—');
+      setText('currentWeatherFreshness', 'Source timestamp pending');
+      timeDisplay.textContent = 'Loading current weather...';
+      errorDisplay.classList.add('hidden');
+
+      try {
+        const response = await fetch(
+          `/api/weather/current?station=${encodeURIComponent(stationName)}`
+        );
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Current weather request failed.');
+        if (requestId !== currentWeatherRequestId) return null;
+
+        const timezone = data.timezone || CITY_TIMEZONES[stationName] || 'UTC';
+        const sourceTimestamp = data.current_time_utc;
+        const retrievedTimestamp = data.retrieved_at;
+        const sourceTime = sourceTimestamp ? new Date(sourceTimestamp) : null;
+        const retrievedTime = retrievedTimestamp ? new Date(retrievedTimestamp) : null;
+        timeDisplay.textContent =
+          `Source: ${formatTimestamp(sourceTimestamp, timezone)} · Retrieved: ${formatTimestamp(retrievedTimestamp, timezone)}`;
+        setText('currentTempDisplay', formatObservationValue(data.current_temperature_c));
+        setText('todayMinTempDisplay', formatObservationValue(data.today_min_temperature_c));
+        setText('todayMaxTempDisplay', formatObservationValue(data.today_max_temperature_c));
+        setText('currentPrecipDisplay', formatObservationValue(data.precipitation_last_hour_mm));
+        setText('currentHumidityDisplay', formatObservationValue(data.relative_humidity_pct));
+        setText('currentWindDisplay', formatObservationValue(data.wind_speed_kmh));
+        setText('currentWindDirectionDisplay',
+          `Direction: ${formatObservationValue(data.wind_direction_degrees)}°`);
+        setText('apparentTempDisplay', formatObservationValue(data.apparent_temperature_c));
+        setText('dewPointDisplay', formatObservationValue(data.dew_point_c));
+        setText('windGustDisplay', formatObservationValue(data.wind_gusts_kmh));
+        setText('cloudCoverDisplay', formatObservationValue(data.cloud_cover_pct));
+        setText('pressureDisplay', formatObservationValue(data.pressure_msl_hpa));
+        setText('surfacePressureDisplay', formatObservationValue(data.surface_pressure_hpa));
+        setText('visibilityDisplay',
+          data.visibility_m !== null && data.visibility_m !== undefined
+            && Number.isFinite(Number(data.visibility_m))
+            ? (Number(data.visibility_m) / 1000).toFixed(1)
+            : '—');
+        setText('precipTypesDisplay',
+          `${formatObservationValue(data.rain_mm)} / ${formatObservationValue(data.showers_mm)} / ${formatObservationValue(data.snowfall_cm)}`);
+        setText('sunTimesDisplay',
+          `${data.sunrise ? data.sunrise.slice(-5) : '—'} / ${data.sunset ? data.sunset.slice(-5) : '—'}`);
+        setText('weatherDescriptionDisplay', data.weather_description || 'Condition unavailable');
+
+        const ageMinutes = sourceTime && retrievedTime
+          && Number.isFinite(sourceTime.getTime())
+          && Number.isFinite(retrievedTime.getTime())
+          ? Math.round((retrievedTime.getTime() - sourceTime.getTime()) / 60000)
+          : null;
+        setText('currentWeatherFreshness',
+          ageMinutes === null
+            ? 'Source timestamp unavailable'
+            : ageMinutes > 120
+              ? `Source data is approximately ${Math.floor(ageMinutes / 60)} hours old`
+              : `Source data age: ${Math.max(0, ageMinutes)} minutes · ${data.update_interval_seconds || 900}-second provider interval`);
+        data.retrieved_at = retrievedTimestamp;
+        return data;
+      } catch (error) {
+        if (requestId !== currentWeatherRequestId) return null;
+        timeDisplay.textContent = 'Current weather unavailable';
+        errorDisplay.textContent = error.message;
+        errorDisplay.classList.remove('hidden');
+        console.error('Error loading current weather:', error);
+        return null;
+      }
+    }
 
     // Load forecast for chosen station
-    async function loadStationData(stationName) {
+    async function loadStationData(stationName, resetCalendarDate) {
+      const requestId = ++stationRequestId;
+      const currentData = await loadCurrentWeather(stationName);
+      if (requestId !== stationRequestId) return;
+      initializeCalendar(
+        stationName,
+        currentData?.timezone || CITY_TIMEZONES[stationName] || 'UTC',
+        resetCalendarDate
+      );
+
       try {
         const response = await fetch(`/api/weather/forecast?station=${encodeURIComponent(stationName)}`);
         const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Forecast request failed.');
+        if (requestId !== stationRequestId) return;
         currentForecast = data;
+        setText(
+          'forecastFreshness',
+          `LightGBM generated: ${formatTimestamp(
+            data.generated_at,
+            currentData?.timezone || CITY_TIMEZONES[stationName] || 'UTC'
+          )}`
+        );
 
-        // Update Stat Cards
-        const preds = data.predictions || [];
+        const preds = Array.isArray(data.predictions) ? data.predictions : [];
         if (preds.length > 0) {
           const first = preds[0];
-          const meanVal = Number(first.predicted_mean_temp_c ?? first.mean_temp_c);
-          document.getElementById('meanTempDisplay').innerText = !isNaN(meanVal) ? meanVal.toFixed(1) : '—';
-          
-          const minVal = Number(first.predicted_min_temp_c ?? first.min_temp_c);
-          const maxVal = Number(first.predicted_max_temp_c ?? first.max_temp_c);
-          document.getElementById('rangeTempDisplay').innerText = (!isNaN(minVal) && !isNaN(maxVal)) 
-            ? `${minVal.toFixed(1)} / ${maxVal.toFixed(1)}` 
-            : '—';
-          
-          const totalPrecip = preds.reduce((acc, p) => acc + (p.predicted_precip_mm || p.precip_mm || 0), 0);
-          document.getElementById('precipDisplay').innerText = totalPrecip.toFixed(1);
+          const meanVal = numericValue(first.predicted_mean_temp_c ?? first.mean_temp_c);
+          setText('meanTempDisplay', meanVal === null ? '—' : meanVal.toFixed(1));
+
+          const minVal = numericValue(first.predicted_min_temp_c ?? first.min_temp_c);
+          const maxVal = numericValue(first.predicted_max_temp_c ?? first.max_temp_c);
+          setText('rangeTempDisplay',
+            minVal !== null && maxVal !== null
+              ? `${minVal.toFixed(1)} / ${maxVal.toFixed(1)}`
+              : '—');
+
+          const precipValues = preds
+            .map((prediction) => numericValue(prediction.predicted_precip_mm ?? prediction.precip_mm))
+            .filter((value) => value !== null);
+          setText('precipDisplay',
+            precipValues.length
+              ? precipValues.reduce((sum, value) => sum + value, 0).toFixed(1)
+              : '—');
+        } else {
+          setText('meanTempDisplay', '—');
+          setText('rangeTempDisplay', '—');
+          setText('precipDisplay', '—');
         }
 
-        // Update Baseline / Anomaly status card
         const statusEl = document.getElementById('statusDisplay');
-        if (data.anomalies && data.anomalies.length > 0) {
-          const topAnom = data.anomalies[0];
+        const anomalyFlags = flaggedAnomalies(data.anomalies);
+        if (anomalyFlags.length > 0) {
+          const topAnom = anomalyFlags[0];
           const label = (topAnom.label || 'Anomaly').replace(/_/g, ' ');
-          statusEl.innerText = label.toUpperCase();
+          statusEl.textContent = label.toUpperCase();
           statusEl.className = topAnom.status === 'extreme_alert' ? 'text-sm font-semibold text-rose-400' : 'text-sm font-semibold text-amber-400';
         } else {
-          statusEl.innerText = 'Near Normal';
-          statusEl.className = 'text-sm font-semibold text-emerald-400';
+          statusEl.textContent = preds.length ? 'No flags' : 'Unavailable';
+          statusEl.className = 'text-sm font-semibold text-slate-400';
         }
 
         renderChart(preds);
-      } catch (err) {
-        console.error("Error loading forecast:", err);
+      } catch (error) {
+        if (requestId !== stationRequestId) return;
+        currentForecast = null;
+        setText('forecastFreshness', 'LightGBM generation time unavailable');
+        setText('meanTempDisplay', '—');
+        setText('rangeTempDisplay', '—');
+        setText('precipDisplay', '—');
+        setText('statusDisplay', 'Unavailable');
+        renderChart([]);
+        console.error('Error loading forecast:', error);
       }
     }
 
@@ -316,6 +684,10 @@
       const maxTemps = predictions.map(p => p.predicted_max_temp_c ?? p.max_temp_c ?? 0);
       const minTemps = predictions.map(p => p.predicted_min_temp_c ?? p.min_temp_c ?? 0);
       const precips = predictions.map(p => p.predicted_precip_mm ?? p.precip_mm ?? 0);
+      const axisColor = document.documentElement.dataset.theme === 'light' ? '#475569' : '#94a3b8';
+      const gridColor = document.documentElement.dataset.theme === 'light'
+        ? 'rgba(148, 163, 184, 0.35)'
+        : 'rgba(51, 65, 85, 0.3)';
 
       if (chartInstance) {
         chartInstance.destroy();
@@ -360,18 +732,18 @@
           maintainAspectRatio: false,
           plugins: {
             legend: {
-              labels: { color: '#cbd5e1', font: { size: 11 } }
+              labels: { color: axisColor, font: { size: 11 } }
             }
           },
           scales: {
             x: {
-              grid: { color: 'rgba(51, 65, 85, 0.3)' },
-              ticks: { color: '#94a3b8', font: { size: 11 } }
+              grid: { color: gridColor },
+              ticks: { color: axisColor, font: { size: 11 } }
             },
             y: {
-              title: { display: true, text: 'Temperature (°C)', color: '#94a3b8' },
-              grid: { color: 'rgba(51, 65, 85, 0.3)' },
-              ticks: { color: '#94a3b8', font: { size: 11 } }
+              title: { display: true, text: 'Temperature (°C)', color: axisColor },
+              grid: { color: gridColor },
+              ticks: { color: axisColor, font: { size: 11 } }
             },
             yPrecip: {
               position: 'right',
@@ -385,6 +757,468 @@
         }
       });
     }
+
+    function shiftCalendarDate(dateString, days) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const value = new Date(Date.UTC(year, month - 1, day + days));
+      return [
+        value.getUTCFullYear(),
+        String(value.getUTCMonth() + 1).padStart(2, '0'),
+        String(value.getUTCDate()).padStart(2, '0'),
+      ].join('-');
+    }
+
+    function dateInTimezone(timeZone) {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
+    }
+
+    function localDateLabel(dateString, timeZone) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'full',
+        timeZone: timeZone || 'UTC',
+      }).format(new Date(Date.UTC(year, month - 1, day, 12)));
+    }
+
+    function initializeCalendar(stationName, timeZone, resetDate) {
+      calendarStation = stationName;
+      calendarTimezone = timeZone;
+      const today = dateInTimezone(timeZone);
+      const maxDate = shiftCalendarDate(today, 7);
+      const savedDate = localStorage.getItem(`atmosync-calendar-date:${stationName}`);
+      selectedDate = !resetDate && savedDate && savedDate <= maxDate ? savedDate : today;
+      if (selectedDate > maxDate || selectedDate.length !== 10) selectedDate = today;
+
+      setText('calendarTimezone', `Location timezone: ${timeZone}`);
+      setText('calendarDateLimit', `Forecast available through ${localDateLabel(maxDate, timeZone)}`);
+      const dateInput = document.getElementById('calendarDateInput');
+      dateInput.max = maxDate;
+      dateInput.value = selectedDate;
+      loadSelectedDate(false);
+    }
+
+    function selectCalendarDate(dateString) {
+      selectedDate = dateString;
+      localStorage.setItem(`atmosync-calendar-date:${calendarStation}`, dateString);
+      document.getElementById('calendarDateInput').value = dateString;
+      loadSelectedDate(false);
+    }
+
+    function openCalendarDatePicker() {
+      const dateInput = document.getElementById('calendarDateInput');
+      if (typeof dateInput.showPicker === 'function') {
+        dateInput.showPicker();
+        return;
+      }
+      dateInput.focus();
+      dateInput.click();
+    }
+
+    function addDataCard(container, title, source, timestamp, rows, note) {
+      const validRows = rows.filter((row) =>
+        row.value !== null && row.value !== undefined && row.value !== '');
+      if (!validRows.length) return false;
+
+      const card = document.createElement('section');
+      card.className = 'bg-slate-950/50 border border-slate-800 rounded-xl p-3';
+      const heading = document.createElement('h5');
+      heading.className = 'text-xs font-semibold text-white';
+      heading.textContent = title;
+      const meta = document.createElement('p');
+      meta.className = 'text-[10px] text-slate-400 mt-1';
+      meta.textContent = `${source}${timestamp ? ` · Retrieved/generated ${formatTimestamp(timestamp, calendarTimezone)}` : ''}`;
+      card.append(heading, meta);
+
+      const list = document.createElement('dl');
+      list.className = 'grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3';
+      validRows.forEach((row) => {
+        const item = document.createElement('div');
+        item.className = 'rounded-lg bg-slate-900/70 border border-slate-800/70 px-2.5 py-2';
+        const label = document.createElement('dt');
+        label.className = 'text-[10px] text-slate-400';
+        label.textContent = row.label;
+        const value = document.createElement('dd');
+        value.className = 'text-xs font-semibold text-white mt-1';
+        const numeric = Number(row.value);
+        value.textContent = `${Number.isFinite(numeric) ? formatObservationValue(numeric) : row.value}${row.unit ? ` ${row.unit}` : ''}`;
+        item.append(label, value);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+
+      if (note) {
+        const noteText = document.createElement('p');
+        noteText.className = 'text-[10px] text-slate-400 mt-2';
+        noteText.textContent = note;
+        card.appendChild(noteText);
+      }
+      container.appendChild(card);
+      return true;
+    }
+
+    const ECCC_FIELD_LABELS = {
+      mean_temperature: ['Mean temperature', '°C'],
+      min_temperature: ['Minimum temperature', '°C'],
+      max_temperature: ['Maximum temperature', '°C'],
+      total_precipitation: ['Total precipitation', 'mm'],
+      total_rain: ['Total rain', 'mm'],
+      total_snow: ['Total snow', 'cm'],
+      snow_on_ground: ['Snow on ground', 'cm'],
+      speed_max_gust: ['Maximum wind gust', 'km/h'],
+      min_relative_humidity: ['Minimum relative humidity', '%'],
+    };
+
+    function observationRows(record) {
+      return Object.entries(ECCC_FIELD_LABELS)
+        .filter(([field]) => record[field] !== null && record[field] !== undefined)
+        .map(([field, [label, unit]]) => ({ label, value: record[field], unit }));
+    }
+
+    function renderSelectedDate(data) {
+      const details = document.getElementById('selectedDateDetails');
+      details.replaceChildren();
+      const mode = data.mode;
+      const modeLabel = mode === 'historical' ? 'Historical' : mode === 'current' ? 'Today' : 'Forecast';
+      setText('selectedDateLabel', localDateLabel(data.date, data.timezone));
+      setText('selectedDateMode', modeLabel);
+      document.getElementById('retrySelectedDateButton').classList.add('hidden');
+
+      let hasData = false;
+      if (mode === 'historical') {
+        setText('selectedDateSource', 'ECCC observations · forecast-filled values removed');
+        const observations = Array.isArray(data.eccc_observations) ? data.eccc_observations : [];
+        observations.forEach((record, index) => {
+          hasData = addDataCard(
+            details,
+            `ECCC daily observation${observations.length > 1 ? ` ${index + 1}` : ''}`,
+            'Environment and Climate Change Canada · actual observation values only',
+            data.retrieved_at,
+            observationRows(record),
+            'ECCC values are daily observations; hourly historical measurements are not available through this feed.',
+          ) || hasData;
+        });
+        setText('selectedDateStatus',
+          hasData
+            ? `${observations.length} ECCC observation record(s) returned. No forecast fallback is displayed as history.`
+            : 'No ECCC actual observations are stored for this station and date; no forecast/model fallback is shown.');
+      } else if (mode === 'current') {
+        setText('selectedDateSource', 'Open-Meteo current model estimates · ECCC actuals shown separately when available');
+        const current = data.current_weather || {};
+        const currentRows = [
+          ['Temperature now', current.current_temperature_c, '°C'],
+          ['Feels like', current.apparent_temperature_c, '°C'],
+          ['Dew point', current.dew_point_c, '°C'],
+          ['Today minimum (estimate)', current.today_min_temperature_c, '°C'],
+          ['Today maximum (estimate)', current.today_max_temperature_c, '°C'],
+          ['Relative humidity', current.relative_humidity_pct, '%'],
+          ['Current precipitation', current.precipitation_last_hour_mm, 'mm'],
+          ['Rain', current.rain_mm, 'mm'],
+          ['Showers', current.showers_mm, 'mm'],
+          ['Snowfall', current.snowfall_cm, 'cm'],
+          ['Cloud cover', current.cloud_cover_pct, '%'],
+          ['Wind speed', current.wind_speed_kmh, 'km/h'],
+          ['Wind direction', current.wind_direction_degrees, 'degrees'],
+          ['Wind gusts', current.wind_gusts_kmh, 'km/h'],
+          ['Sea-level pressure', current.pressure_msl_hpa, 'hPa'],
+          ['Surface pressure', current.surface_pressure_hpa, 'hPa'],
+          ['Visibility', current.visibility_m === null || current.visibility_m === undefined ? null : Number(current.visibility_m) / 1000, 'km'],
+          ['Condition', current.weather_description, ''],
+        ].map(([label, value, unit]) => ({ label, value, unit }));
+        hasData = addDataCard(
+          details,
+          'Current conditions',
+          'Open-Meteo · model-based, not a direct ECCC station observation',
+          current.retrieved_at || data.retrieved_at,
+          currentRows,
+          "Today's low/high and current conditions are estimates. Provider timestamp is displayed separately from retrieval time.",
+        );
+        const observations = Array.isArray(data.eccc_observations) ? data.eccc_observations : [];
+        observations.forEach((record) => {
+          hasData = addDataCard(
+            details,
+            'ECCC daily observed values',
+            'Environment and Climate Change Canada · actual observation values only',
+            data.retrieved_at,
+            observationRows(record),
+            'Daily station observations are separate from Open-Meteo current estimates.',
+          ) || hasData;
+        });
+        if (data.eccc_error) {
+          const warning = document.createElement('p');
+          warning.className = 'text-xs text-amber-400';
+          warning.textContent = data.eccc_error;
+          details.appendChild(warning);
+        }
+        setText('selectedDateStatus',
+          !hasData
+            ? 'Current weather is unavailable for this date.'
+            : data.eccc_error
+              ? 'Open-Meteo current conditions loaded; ECCC daily actuals are unavailable.'
+              : observations.length
+                ? 'Current conditions loaded. ECCC daily actuals are listed separately.'
+                : 'Current conditions loaded. No ECCC daily actual observation was returned for today.');
+      } else {
+        const sources = [];
+        const provider = data.provider_forecast;
+        if (provider) {
+          const providerRows = [
+            ['Minimum temperature', provider.temperature_min_c, '°C'],
+            ['Maximum temperature', provider.temperature_max_c, '°C'],
+            ['Precipitation total', provider.precipitation_sum_mm, 'mm'],
+            ['Condition', provider.weather_description, ''],
+          ].map(([label, value, unit]) => ({ label, value, unit }));
+          hasData = addDataCard(
+            details,
+            'Provider daily forecast',
+            'Open-Meteo · weather-model forecast',
+            data.retrieved_at,
+            providerRows,
+            'Provider forecast values are not ECCC station observations.',
+          ) || hasData;
+          sources.push('Open-Meteo');
+        }
+
+        const ml = data.ml_forecast;
+        if (ml) {
+          const mlRows = [
+            ['Minimum temperature', ml.min_temp_c, '°C'],
+            ['Mean temperature', ml.mean_temp_c, '°C'],
+            ['Maximum temperature', ml.max_temp_c, '°C'],
+            ['Precipitation total', ml.precip_mm, 'mm'],
+          ].map(([label, value, unit]) => ({ label, value, unit }));
+          hasData = addDataCard(
+            details,
+            'AtmoSync ML prediction',
+            `${ml.model_name || 'LightGBM'} · ${ml.model_version || 'model version unavailable'}`,
+            ml.generated_at,
+            mlRows,
+            `Forecast for ${data.date}; generated_at indicates when this model row was created.`,
+          ) || hasData;
+          sources.push('AtmoSync LightGBM');
+        }
+
+        const anomalyRecords = Array.isArray(data.anomalies) ? data.anomalies : [];
+        const anomalies = flaggedAnomalies(anomalyRecords);
+        if (anomalies.length) {
+          const anomalyCard = document.createElement('section');
+          anomalyCard.className = 'bg-amber-950/30 border border-amber-800/70 rounded-xl p-3';
+          const heading = document.createElement('h5');
+          heading.className = 'text-xs font-semibold text-amber-300';
+          heading.textContent = 'Forecast anomaly flags';
+          anomalyCard.appendChild(heading);
+          anomalies.forEach((anomaly) => {
+            const line = document.createElement('p');
+            line.className = 'text-[11px] text-amber-200 mt-2';
+            line.textContent = `${String(anomaly.variable || 'Weather variable').replace(/_/g, ' ')}: ${formatObservationValue(anomaly.value)} (expected ${formatObservationValue(anomaly.expected_baseline)}), ${String(anomaly.label || anomaly.status || 'flag').replace(/_/g, ' ')}.`;
+            anomalyCard.appendChild(line);
+          });
+          const note = document.createElement('p');
+          note.className = 'text-[10px] text-amber-200/80 mt-2';
+          note.textContent = 'Model-relative flags only; these are not official weather warnings.';
+          anomalyCard.appendChild(note);
+          details.appendChild(anomalyCard);
+          hasData = true;
+        } else if (anomalyRecords.length) {
+          const noFlags = document.createElement('p');
+          noFlags.className = 'text-[11px] text-slate-400';
+          noFlags.textContent = 'No forecast anomaly was flagged for this date.';
+          details.appendChild(noFlags);
+        }
+
+        if (data.provider_error) sources.push('Open-Meteo unavailable');
+        if (data.ml_error) sources.push('LightGBM unavailable');
+        setText('selectedDateSource',
+          sources.length
+            ? `Separate sources: ${sources.join(' and ')}`
+            : 'No forecast source returned data for this date.');
+        setText('selectedDateStatus',
+          hasData
+            ? `Forecast data loaded from ${sources.filter((source) => source.includes('unavailable') === false).join(' and ') || 'available source(s)'}.`
+            : 'No provider or ML forecast is available for this date.');
+
+        if (data.provider_error || data.ml_error) {
+          const warning = document.createElement('p');
+          warning.className = 'text-xs text-amber-400';
+          warning.textContent = [data.provider_error, data.ml_error].filter(Boolean).join(' ');
+          details.appendChild(warning);
+        }
+      }
+
+      document.getElementById('explainSelectedDateButton').disabled = !hasData;
+      document.getElementById('exportSelectedDateButton').disabled = !hasData;
+    }
+
+    async function loadSelectedDate(forceRefresh) {
+      if (!selectedDate || !calendarStation || !calendarTimezone) return;
+      const requestId = ++calendarRequestId;
+      selectedDatePayload = null;
+      const details = document.getElementById('selectedDateDetails');
+      const retryButton = document.getElementById('retrySelectedDateButton');
+      const mode = selectedDate < dateInTimezone(calendarTimezone)
+        ? 'historical'
+        : selectedDate === dateInTimezone(calendarTimezone)
+          ? 'current'
+          : 'forecast';
+      setText('selectedDateLabel', localDateLabel(selectedDate, calendarTimezone));
+      setText('selectedDateMode', mode === 'historical' ? 'Historical' : mode === 'current' ? 'Today' : 'Forecast');
+      setText('selectedDateSource', 'Loading date-specific weather sources…');
+      setText('selectedDateStatus', 'Loading date-specific weather data…');
+      details.replaceChildren();
+      retryButton.classList.add('hidden');
+      document.getElementById('explainSelectedDateButton').disabled = true;
+      document.getElementById('exportSelectedDateButton').disabled = true;
+
+      const cacheKey = `${calendarStation}|${selectedDate}`;
+      if (forceRefresh) calendarDateCache.delete(cacheKey);
+      let data = calendarDateCache.get(cacheKey);
+      try {
+        if (!data) {
+          const query = new URLSearchParams({
+            station: calendarStation,
+            date: selectedDate,
+          });
+          const response = await fetch(`/api/weather/calendar?${query.toString()}`);
+          data = await response.json();
+          if (!response.ok) throw new Error(data.error || `Weather request failed (${response.status}).`);
+          calendarDateCache.set(cacheKey, data);
+        }
+        if (requestId !== calendarRequestId) return;
+        selectedDatePayload = data;
+        renderSelectedDate(data);
+      } catch (error) {
+        if (requestId !== calendarRequestId) return;
+        setText('selectedDateStatus', `Unable to load weather for this date: ${error.message}`);
+        setText('selectedDateSource', 'Data source request failed; no replacement values were generated.');
+        retryButton.classList.remove('hidden');
+        console.error('Error loading selected date:', error);
+      }
+    }
+
+    function buildSelectedDateCsvRows(data) {
+      const rows = [];
+      const add = (variable, value, unit, source, dataType, timestamp) => {
+        if (value === null || value === undefined || value === '') return;
+        rows.push({
+          location: data.station,
+          date: data.date,
+          timestamp: timestamp || '',
+          variable,
+          value,
+          unit,
+          source,
+          data_type: dataType,
+        });
+      };
+
+      (data.eccc_observations || []).forEach((record) => {
+        observationRows(record).forEach((row) =>
+          add(row.label, row.value, row.unit, 'ECCC', 'observed', data.date));
+      });
+      const current = data.current_weather;
+      if (current) {
+        [
+          ['Temperature now', current.current_temperature_c, '°C'],
+          ['Feels like', current.apparent_temperature_c, '°C'],
+          ['Dew point', current.dew_point_c, '°C'],
+          ["Today's minimum", current.today_min_temperature_c, '°C'],
+          ["Today's maximum", current.today_max_temperature_c, '°C'],
+          ['Relative humidity', current.relative_humidity_pct, '%'],
+          ['Current precipitation', current.precipitation_last_hour_mm, 'mm'],
+          ['Rain', current.rain_mm, 'mm'],
+          ['Showers', current.showers_mm, 'mm'],
+          ['Snowfall', current.snowfall_cm, 'cm'],
+          ['Cloud cover', current.cloud_cover_pct, '%'],
+          ['Wind speed', current.wind_speed_kmh, 'km/h'],
+          ['Wind direction', current.wind_direction_degrees, 'degrees'],
+          ['Wind gusts', current.wind_gusts_kmh, 'km/h'],
+          ['Pressure at sea level', current.pressure_msl_hpa, 'hPa'],
+          ['Surface pressure', current.surface_pressure_hpa, 'hPa'],
+          ['Visibility', current.visibility_m === null || current.visibility_m === undefined ? null : Number(current.visibility_m) / 1000, 'km'],
+        ].forEach(([name, value, unit]) =>
+          add(name, value, unit, 'Open-Meteo', 'current_model_estimate', current.current_time_utc));
+      }
+      const provider = data.provider_forecast;
+      if (provider) {
+        [
+          ['Minimum temperature', provider.temperature_min_c, '°C'],
+          ['Maximum temperature', provider.temperature_max_c, '°C'],
+          ['Precipitation total', provider.precipitation_sum_mm, 'mm'],
+          ['Condition', provider.weather_description, ''],
+        ].forEach(([name, value, unit]) =>
+          add(name, value, unit, 'Open-Meteo', 'provider_forecast', data.retrieved_at));
+      }
+      const ml = data.ml_forecast;
+      if (ml) {
+        [
+          ['Minimum temperature', ml.min_temp_c, '°C'],
+          ['Mean temperature', ml.mean_temp_c, '°C'],
+          ['Maximum temperature', ml.max_temp_c, '°C'],
+          ['Precipitation total', ml.precip_mm, 'mm'],
+        ].forEach(([name, value, unit]) =>
+          add(name, value, unit, 'AtmoSync LightGBM', 'ml_prediction', ml.generated_at));
+      }
+      return rows;
+    }
+
+    function exportSelectedDateCsv() {
+      if (!selectedDatePayload) return;
+      const rows = buildSelectedDateCsvRows(selectedDatePayload);
+      if (!rows.length) return;
+      const columns = ['location', 'date', 'timestamp', 'variable', 'value', 'unit', 'source', 'data_type'];
+      const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const csv = [
+        columns.join(','),
+        ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(',')),
+      ].join('\r\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `atmosync-${calendarStation.replace(/\s+/g, '-')}-${selectedDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function explainSelectedDate() {
+      if (!selectedDatePayload) return;
+      const data = selectedDatePayload;
+      const promptData = {
+        station: data.station,
+        date: data.date,
+        timezone: data.timezone,
+        mode: data.mode,
+        eccc_observations: data.eccc_observations,
+        current_weather: data.current_weather,
+        provider_forecast: data.provider_forecast,
+        ml_forecast: data.ml_forecast,
+        anomalies: data.anomalies,
+      };
+      const mlContext = {
+        station: String(data.station || '').toLowerCase(),
+        model_name: data.ml_forecast ? (data.ml_forecast.model_name || 'LightGBM') : 'No selected-date ML forecast',
+        model_version: data.ml_forecast?.model_version,
+        forecasts: data.ml_forecast ? [data.ml_forecast] : [],
+        anomalies: flaggedAnomalies(data.anomalies),
+      };
+      const prompt = `Explain the weather data for ${data.station} on ${data.date}. Distinguish ECCC observations, Open-Meteo estimates/forecasts, and the AtmoSync LightGBM prediction. Use only the selected-date values below for numeric statements, note missing values, and do not describe model anomaly flags as official warnings. Selected-date source data: ${JSON.stringify(promptData)}`;
+      askAssistant(prompt, mlContext, `Explain ${data.station} weather for ${data.date}`);
+    }
+
+    document.getElementById('calendarDatePickerButton').addEventListener('click', openCalendarDatePicker);
+    document.getElementById('calendarDateInput').addEventListener('change', (event) => {
+      if (event.target.value) selectCalendarDate(event.target.value);
+    });
+    document.getElementById('retrySelectedDateButton').addEventListener('click', () => loadSelectedDate(true));
+    document.getElementById('explainSelectedDateButton').addEventListener('click', explainSelectedDate);
+    document.getElementById('exportSelectedDateButton').addEventListener('click', exportSelectedDateCsv);
 
     // Handle Chat Form Submit
     async function handleChatSubmit(event) {
@@ -403,16 +1237,17 @@
     }
 
     // Send query to RAG API
-    async function askAssistant(query) {
+    async function askAssistant(query, mlForecastContext, displayQuery) {
       const messagesContainer = document.getElementById('chatMessages');
       const station = document.getElementById('stationSelect').value;
+      const visibleQuery = displayQuery || query;
 
       // 1. Add User Message bubble
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
       userBubble.innerHTML = `
         <div class="max-w-[85%] bg-cyan-600 text-white rounded-2xl rounded-tr-sm p-3 text-xs leading-relaxed shadow-sm">
-          ${escapeHtml(query)}
+          ${escapeHtml(visibleQuery)}
         </div>
       `;
       messagesContainer.appendChild(userBubble);
@@ -425,8 +1260,13 @@
         <div class="h-7 w-7 rounded-lg bg-cyan-600/30 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-xs">
           <i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i>
         </div>
-        <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-3 text-xs text-slate-400 flex items-center gap-2">
-          <span>Searching Qdrant vector database & consulting Gemini...</span>
+        <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-3 text-xs text-slate-400 flex items-center gap-2" role="status" aria-live="polite">
+          <span>Checking climate sources and preparing an answer</span>
+          <span class="inline-flex items-center gap-1 text-cyan-400" aria-hidden="true">
+            <span class="assistant-typing-dot"></span>
+            <span class="assistant-typing-dot"></span>
+            <span class="assistant-typing-dot"></span>
+          </span>
         </div>
       `;
       messagesContainer.appendChild(loadingBubble);
@@ -440,7 +1280,7 @@
           body: JSON.stringify({
             query: query,
             station: station,
-            ml_forecast: currentForecast,
+            ml_forecast: mlForecastContext === undefined ? currentForecast : mlForecastContext,
             top_k: 4
           })
         });
@@ -483,12 +1323,19 @@
               </span>
               ${data.confidence ? `<span class="text-[10px] text-slate-400">Confidence: ${(data.confidence * 100).toFixed(0)}%</span>` : ''}
             </div>
-            <div class="leading-relaxed space-y-1.5 text-xs text-slate-200">${renderMarkdown(data.answer || 'No response generated.')}</div>
+            <div data-assistant-response class="leading-relaxed space-y-1.5 text-xs text-slate-200" aria-live="off"></div>
             ${citationsHtml}
           </div>
         `;
 
         messagesContainer.appendChild(aiBubble);
+        const answerContainer = aiBubble.querySelector('[data-assistant-response]');
+        await revealAssistantResponse(
+          answerContainer,
+          data.answer || 'No response generated.',
+          messagesContainer,
+        );
+        answerContainer.setAttribute('aria-live', 'polite');
       } catch (err) {
         loadingBubble.remove();
         const errBubble = document.createElement('div');
@@ -499,6 +1346,25 @@
 
       renderIcons();
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    async function revealAssistantResponse(container, answer, messagesContainer) {
+      const lines = String(answer).replace(/\r\n/g, '\n').split('\n');
+      let visibleText = '';
+      const animationDelay = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 0
+        : 120;
+
+      for (let index = 0; index < lines.length; index += 1) {
+        visibleText += `${index ? '\n' : ''}${lines[index]}`;
+        container.innerHTML = `${renderMarkdown(visibleText)}<span class="assistant-typing-cursor" aria-hidden="true"></span>`;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        if (animationDelay && index < lines.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, animationDelay));
+        }
+      }
+
+      container.innerHTML = renderMarkdown(visibleText);
     }
 
     function renderMarkdown(text) {
@@ -526,13 +1392,40 @@
       return div.innerHTML;
     }
 
+    function applyTheme(theme) {
+      const isLight = theme === 'light';
+      document.documentElement.dataset.theme = isLight ? 'light' : 'dark';
+      document.documentElement.classList.toggle('dark', !isLight);
+      setText('themeToggleLabel', isLight ? 'Dark mode' : 'Light mode');
+      document.getElementById('themeToggle').setAttribute(
+        'aria-label',
+        isLight ? 'Switch to dark mode' : 'Switch to light mode',
+      );
+      localStorage.setItem('atmosync-theme', isLight ? 'light' : 'dark');
+      if (currentForecast?.predictions) renderChart(currentForecast.predictions);
+    }
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const nextTheme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      applyTheme(nextTheme);
+    });
+
     // Station selection change handler
     document.getElementById('stationSelect').addEventListener('change', (e) => {
-      loadStationData(e.target.value);
+      localStorage.setItem('atmosync-station', e.target.value);
+      loadStationData(e.target.value, true);
     });
 
     // Initial load
-    loadStationData('toronto');
+    applyTheme(localStorage.getItem('atmosync-theme') || 'dark');
+    const stationSelect = document.getElementById('stationSelect');
+    const savedStation = localStorage.getItem('atmosync-station');
+    const initialStation = savedStation &&
+      Array.from(stationSelect.options).some((option) => option.value === savedStation)
+      ? savedStation
+      : 'toronto';
+    stationSelect.value = initialStation;
+    loadStationData(initialStation, false);
   </script>
 </body>
 </html>
